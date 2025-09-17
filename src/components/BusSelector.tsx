@@ -22,14 +22,13 @@ const BusSelector: React.FC<BusSelectorProps> = ({
     }
   };
   
-  const busNumbers = Array.from({ length: gridSize * gridSize }, (_, i) => i + 1);
+  const busNumbers = Array.from({ length: 16 }, (_, i) => i + 1);
   
   return (
     <div className="w-full max-w-md mx-auto">
       <h2 className="text-xl font-semibold mb-4 text-center">Select Bus Number</h2>
       <div 
-        className={`grid grid-cols-${Math.min(gridSize, 5)} gap-2 md:gap-3`}
-        style={{ gridTemplateColumns: `repeat(${Math.min(gridSize, 5)}, 1fr)` }}
+        className="grid grid-cols-4 gap-2 md:gap-3"
       >
         {busNumbers.map((busId) => (
           <motion.button
