@@ -75,12 +75,17 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
               
               {/* Stop name with emoji */}
               <div className="flex flex-col">
-                <div className="text-sm md:text-base">{stop.name}</div>
+                <div className="text-sm md:text-base font-medium">{stop.name}</div>
                 
-                {/* Show timestamp for completed stops */}
-                {stop.completed && stop.timestamp && (
-                  <div className="text-xs text-green-600 dark:text-green-400">
-                    ✅ {stop.timestamp}
+                {/* Show scheduled time for all stops */}
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  📅 Scheduled: {stop.scheduledTime}
+                </div>
+                
+                {/* Show actual arrival time for completed stops */}
+                {stop.completed && stop.actualTime && (
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✅ Arrived: {stop.actualTime}
                   </div>
                 )}
                 

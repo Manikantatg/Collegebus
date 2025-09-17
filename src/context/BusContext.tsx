@@ -106,7 +106,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updatedRoute[bus.currentStopIndex] = {
       ...updatedRoute[bus.currentStopIndex],
       completed: true,
-      timestamp: getFormattedTime(),
+      actualTime: getFormattedTime(),
     };
 
     const notification = {
@@ -134,7 +134,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updatedRoute[bus.currentStopIndex - 1] = {
       ...updatedRoute[bus.currentStopIndex - 1],
       completed: false,
-      timestamp: null,
+      actualTime: undefined,
     };
 
     const notification = {
@@ -211,8 +211,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       eta: null,
       route: bus.route.map(stop => ({
         name: stop.name,
+        scheduledTime: stop.scheduledTime,
         completed: false,
-        timestamp: null,
+        actualTime: undefined,
       })),
       etaRequests: [],
       notifications: [],

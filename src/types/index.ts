@@ -1,7 +1,8 @@
 export interface BusStop {
   name: string;
+  scheduledTime: string;
+  actualTime?: string;
   completed: boolean;
-  timestamp: string | null;
 }
 
 export interface Location {

@@ -2,23 +2,188 @@ export interface BusRoute {
   [key: number]: string[];
 }
 
-export const busRoutes: BusRoute = {
-  1: ["🌳 Kakarla Thota", "🚧 Guggarati Railway Gate", "🏪 APMC Main Gate", "🕉️ Benki Mareamma Temple", "👮 Bruce Pet Police Station", "💎 Kalyan Jewellers", "🔄 Mothi Circle", "🎓 Mount View Campus"],
-  2: ["🏫 RR Block", "🎓 Mount View Campus"],
-  3: ["🏫 RR Block", "🎓 Mount View Campus"],
-  4: ["🏡 Kuvempu Nagar 5th Cross", "🏡 Kuvempu Nagar 3rd Cross", "🏢 G Square", "🥖 Yerithata Bakery", "🏘️ Vijayanagar Colony", "🕉️ Radia Park Ayyappa Temple", "🚧 2nd Railway Gate", "✝️ Sudha Cross", "🏫 Vasavi School", "🏘️ Sanjay Gandhi Nagar", "🕉️ Kumarswamy Temple", "👮‍♀️ Womens Police Station", "🎓 Mount View Campus"],
-  5: ["🏫 RR Block", "🎓 Mount View Campus"],
-  6: ["🔄 Gandhi Circle", "🕉️ Abhayanjaneya Temple", "🛍️ Reliance Trends", "🏪 APMC", "🚌 Bus Depot", "🏨 Vaishanavi Hotel", "🏘️ Halekote", "🏘️ Tekkalakote", "✝️ Byrapura Cross", "✝️ Sirigeri Cross", "🎓 Mount View Campus"],
-  7: ["🏘️ Kapagal", "🏘️ Sirivara", "🏘️ Sangankal", "🏘️ Vajpayee Layout Main Gate", "⚡ KEB Circle", "💧 Water Booster", "🏛️ MLA Office", "🏪 Gandhi Nagar Market", "🏥 Sukrutha Nursing Home", "🎓 Mount View Campus"],
-  8: ["🏘️ Bandihatti (Satyanarayana Temple)", "🏫 Kendriya Vidhyalaya", "🕌 Kunitan Masjid", "👮 Cowl Bazar Police Station", "🏰 Fort Entrance", "🍽️ Putti Hotel", "🎓 Mount View Campus"],
-  9: ["🚦 Belagal Cross", "🎦 Select Talkies", "🏫 Mohammadia School", "🔄 SP Circle", "🎓 Mount View Campus"],
-  10: ["💧 Water-Tank-Circle Raghavendra Colony", "🕉️ Sana Durgamma Temple", "🏦 Patel Nagar SBI Bank", "🕉️ Raghavendra Swamy Temple", "🍦 Cool Corner", "🏪 Basaveshwara Nagar Market", "🎓 Mount View Campus"],
-  11: ["🏘️ JK Layout", "🏫 Bala Bharathi School", "🏘️ Sueha Colony", "🏛️ Govindappa Kalyana Mantapa", "🏨 Reddy Hotel", "🌊 Canal", "🏫 Shantiniketan School", "🏢 Gymkhana", "🏛️ Old BJP Office", "🎓 Mount View Campus"],
-  12: ["🥛 KMF Diary", "🏫 Ambedkar School", "🔄 Indira Circle", "⛪ Shrine Church", "🔄 Vidya Nagar Circle", "🏰 Raaga Fort", "🏘️ Shanthi Nagar", "🕉️ Kolagal Yeriswamy Temple", "🏘️ Yarrangali", "🏘️ Badnahatti", "🏘️ Kurugodu", "✝️ Kollur Cross", "🎓 Mount View Campus"],
-  13: ["🕉️ Brahmendra Temple", "🏘️ SMV 5th cross", "🏘️ Kapagal Road 1st Cross", "🏥 Bharath Nursing Home", "🛍️ Vishal Market", "🏦 SBI Bank", "🕉️ Durgamma Gudi", "📺 Sony Showroom", "🚌 KSRTC Bus Depot", "🏛️ Sriramulu Office", "🏥 Ballari Health City", "🏫 Chaitanya Girls College", "🌊 Havambhavi Canal", "🏛️ Classic Function Hall", "🏫 Vijayawada-Chaitanya College", "🎓 Mount View Campus"],
-  14: ["🏘️ Raghavendra Colony 2nd Stage", "💊 Medplus", "🏥 Tamath Hospital", "🏫 BPSC School", "🎦 RR Theatre", "🔄 MG Circle", "🏨 Pawan Hotel", "🔄 Royal Circle", "🚌 Old Bus Stand", "🎓 Mount View Campus"],
-  15: ["🏘️ Andral", "🔄 Bapuji Nagar Circle", "🚌 Kanekal Bus Stand", "🏘️ Miller Pet", "🏭 Gangappa Gin", "💊 Sharada Medical Store", "🎦 Raghavendra Theatre", "🔄 Sangam Circle", "🎓 Mount View Campus"],
-  16: ["🏘️ Shankar Town", "🔄 Old Gate Circle", "🚂 Railway Station", "🛍️ Vishal Mart", "🏛️ Grama Panchayat Office", "🛣️ Toranagallu Bye Pass", "🚌 Kudthini Bus Stand", "🛣️ Veniveenapura Bye Pass", "🏫 BITM main Gate", "🏘️ Allipur", "🏭 Daardmill", "🏛️ Karnataka Function Hall", "🎓 Mount View Campus"]
+export interface BusStop {
+  name: string;
+  scheduledTime: string;
+  actualTime?: string;
+  completed: boolean;
+}
+
+export interface BusRouteWithTimes {
+  [key: number]: BusStop[];
+}
+
+export const busRoutes: BusRouteWithTimes = {
+  1: [
+    { name: "🌳 Kakarla Thota", scheduledTime: "7:40 AM", completed: false },
+    { name: "🚧 Guggarati Railway Gate", scheduledTime: "7:43 AM", completed: false },
+    { name: "🏪 APMC Main Gate", scheduledTime: "7:46 AM", completed: false },
+    { name: "🕉️ Benki Mareamma Temple", scheduledTime: "7:50 AM", completed: false },
+    { name: "👮 Bruce Pet Police Station", scheduledTime: "7:53 AM", completed: false },
+    { name: "💎 Kalyan Jewellers", scheduledTime: "7:55 AM", completed: false },
+    { name: "🔄 Mothi Circle", scheduledTime: "7:58 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  2: [
+    { name: "🏫 RR Block", scheduledTime: "7:45 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  3: [
+    { name: "🏫 RR Block", scheduledTime: "7:45 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  4: [
+    { name: "🏡 Kuvempu Nagar 5th Cross", scheduledTime: "7:35 AM", completed: false },
+    { name: "🏡 Kuvempu Nagar 3rd Cross", scheduledTime: "7:37 AM", completed: false },
+    { name: "🏢 G Square", scheduledTime: "7:40 AM", completed: false },
+    { name: "🥖 Yerithata Bakery", scheduledTime: "7:42 AM", completed: false },
+    { name: "🏘️ Vijayanagar Colony", scheduledTime: "7:44 AM", completed: false },
+    { name: "🕉️ Radia Park Ayyappa Temple", scheduledTime: "7:46 AM", completed: false },
+    { name: "🚧 2nd Railway Gate", scheduledTime: "7:48 AM", completed: false },
+    { name: "✝️ Sudha Cross", scheduledTime: "7:50 AM", completed: false },
+    { name: "🏫 Vasavi School", scheduledTime: "7:52 AM", completed: false },
+    { name: "🏘️ Sanjay Gandhi Nagar", scheduledTime: "7:54 AM", completed: false },
+    { name: "🕉️ Kumarswamy Temple", scheduledTime: "7:56 AM", completed: false },
+    { name: "👮‍♀️ Womens Police Station", scheduledTime: "7:58 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  5: [
+    { name: "🏫 RR Block", scheduledTime: "7:45 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  6: [
+    { name: "🔄 Gandhi Circle", scheduledTime: "7:40 AM", completed: false },
+    { name: "🕉️ Abhayanjaneya Temple", scheduledTime: "7:42 AM", completed: false },
+    { name: "🛍️ Reliance Trends", scheduledTime: "7:44 AM", completed: false },
+    { name: "🏪 APMC", scheduledTime: "7:46 AM", completed: false },
+    { name: "🚌 Bus Depot", scheduledTime: "7:48 AM", completed: false },
+    { name: "🏨 Vaishanavi Hotel", scheduledTime: "7:50 AM", completed: false },
+    { name: "🏘️ Halekote", scheduledTime: "8:05 AM", completed: false },
+    { name: "🏘️ Tekkalakote", scheduledTime: "8:15 AM", completed: false },
+    { name: "✝️ Byrapura Cross", scheduledTime: "8:25 AM", completed: false },
+    { name: "✝️ Sirigeri Cross", scheduledTime: "8:35 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:45 AM", completed: false }
+  ],
+  7: [
+    { name: "🏘️ Kapagal", scheduledTime: "7:20 AM", completed: false },
+    { name: "🏘️ Sirivara", scheduledTime: "7:25 AM", completed: false },
+    { name: "🏘️ Sangankal", scheduledTime: "7:35 AM", completed: false },
+    { name: "🏘️ Vajpayee Layout Main Gate", scheduledTime: "7:40 AM", completed: false },
+    { name: "⚡ KEB Circle", scheduledTime: "7:43 AM", completed: false },
+    { name: "💧 Water Booster", scheduledTime: "7:46 AM", completed: false },
+    { name: "🏛️ MLA Office", scheduledTime: "7:48 AM", completed: false },
+    { name: "🏪 Gandhi Nagar Market", scheduledTime: "7:50 AM", completed: false },
+    { name: "🏥 Sukrutha Nursing Home", scheduledTime: "7:52 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  8: [
+    { name: "🏘️ Bandihatti (Satyanarayana Temple)", scheduledTime: "7:40 AM", completed: false },
+    { name: "🏫 Kendriya Vidhyalaya", scheduledTime: "7:42 AM", completed: false },
+    { name: "🕌 Kunitan Masjid", scheduledTime: "7:45 AM", completed: false },
+    { name: "👮 Cowl Bazar Police Station", scheduledTime: "7:48 AM", completed: false },
+    { name: "🏰 Fort Entrance", scheduledTime: "7:52 AM", completed: false },
+    { name: "🍽️ Putti Hotel", scheduledTime: "7:54 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  9: [
+    { name: "🚦 Belagal Cross", scheduledTime: "7:40 AM", completed: false },
+    { name: "🎦 Select Talkies", scheduledTime: "7:45 AM", completed: false },
+    { name: "🏫 Mohammadia School", scheduledTime: "7:48 AM", completed: false },
+    { name: "🔄 SP Circle", scheduledTime: "7:55 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  10: [
+    { name: "💧 Water-Tank-Circle Raghavendra Colony", scheduledTime: "7:35 AM", completed: false },
+    { name: "🕉️ Sana Durgamma Temple", scheduledTime: "7:37 AM", completed: false },
+    { name: "🏦 Patel Nagar SBI Bank", scheduledTime: "7:40 AM", completed: false },
+    { name: "🕉️ Raghavendra Swamy Temple", scheduledTime: "7:43 AM", completed: false },
+    { name: "🍦 Cool Corner", scheduledTime: "7:45 AM", completed: false },
+    { name: "🏪 Basaveshwara Nagar Market", scheduledTime: "7:50 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  11: [
+    { name: "🏘️ JK Layout", scheduledTime: "7:40 AM", completed: false },
+    { name: "🏫 Bala Bharathi School", scheduledTime: "7:42 AM", completed: false },
+    { name: "🏘️ Sueha Colony", scheduledTime: "7:44 AM", completed: false },
+    { name: "🏛️ Govindappa Kalyana Mantapa", scheduledTime: "7:46 AM", completed: false },
+    { name: "🏨 Reddy Hotel", scheduledTime: "7:48 AM", completed: false },
+    { name: "🌊 Canal", scheduledTime: "7:50 AM", completed: false },
+    { name: "🏫 Shantiniketan School", scheduledTime: "7:52 AM", completed: false },
+    { name: "🏢 Gymkhana", scheduledTime: "7:54 AM", completed: false },
+    { name: "🏛️ Old BJP Office", scheduledTime: "7:56 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  12: [
+    { name: "🥛 KMF Diary", scheduledTime: "7:35 AM", completed: false },
+    { name: "🏫 Ambedkar School", scheduledTime: "7:37 AM", completed: false },
+    { name: "🔄 Indira Circle", scheduledTime: "7:40 AM", completed: false },
+    { name: "⛪ Shrine Church", scheduledTime: "7:42 AM", completed: false },
+    { name: "🔄 Vidya Nagar Circle", scheduledTime: "7:44 AM", completed: false },
+    { name: "🏰 Raaga Fort", scheduledTime: "7:46 AM", completed: false },
+    { name: "🏘️ Shanthi Nagar", scheduledTime: "7:50 AM", completed: false },
+    { name: "🕉️ Kolagal Yeriswamy Temple", scheduledTime: "7:55 AM", completed: false },
+    { name: "🏘️ Yarrangali", scheduledTime: "8:00 AM", completed: false },
+    { name: "🏘️ Badnahatti", scheduledTime: "8:10 AM", completed: false },
+    { name: "🏘️ Kurugodu", scheduledTime: "8:20 AM", completed: false },
+    { name: "✝️ Kollur Cross", scheduledTime: "8:30 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  13: [
+    { name: "🕉️ Brahmendra Temple", scheduledTime: "7:40 AM", completed: false },
+    { name: "🏘️ SMV 5th cross", scheduledTime: "7:42 AM", completed: false },
+    { name: "🏘️ Kapagal Road 1st Cross", scheduledTime: "7:44 AM", completed: false },
+    { name: "🏥 Bharath Nursing Home", scheduledTime: "7:46 AM", completed: false },
+    { name: "🛍️ Vishal Market", scheduledTime: "7:48 AM", completed: false },
+    { name: "🏦 SBI Bank", scheduledTime: "7:50 AM", completed: false },
+    { name: "🕉️ Durgamma Gudi", scheduledTime: "7:52 AM", completed: false },
+    { name: "📺 Sony Showroom", scheduledTime: "7:54 AM", completed: false },
+    { name: "🚌 KSRTC Bus Depot", scheduledTime: "7:56 AM", completed: false },
+    { name: "🏛️ Sriramulu Office", scheduledTime: "7:58 AM", completed: false },
+    { name: "🏥 Ballari Health City", scheduledTime: "8:00 AM", completed: false },
+    { name: "🏫 Chaitanya Girls College", scheduledTime: "8:02 AM", completed: false },
+    { name: "🌊 Havambhavi Canal", scheduledTime: "8:05 AM", completed: false },
+    { name: "🏛️ Classic Function Hall", scheduledTime: "8:07 AM", completed: false },
+    { name: "🏫 Vijayawada-Chaitanya College", scheduledTime: "8:10 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  14: [
+    { name: "🏘️ Raghavendra Colony 2nd Stage", scheduledTime: "7:30 AM", completed: false },
+    { name: "💊 Medplus", scheduledTime: "7:32 AM", completed: false },
+    { name: "🏥 Tamath Hospital", scheduledTime: "7:35 AM", completed: false },
+    { name: "🏫 BPSC School", scheduledTime: "7:37 AM", completed: false },
+    { name: "🎦 RR Theatre", scheduledTime: "7:40 AM", completed: false },
+    { name: "🔄 MG Circle", scheduledTime: "7:42 AM", completed: false },
+    { name: "🏨 Pawan Hotel", scheduledTime: "7:45 AM", completed: false },
+    { name: "🔄 Royal Circle", scheduledTime: "7:47 AM", completed: false },
+    { name: "🚌 Old Bus Stand", scheduledTime: "7:50 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  15: [
+    { name: "🏘️ Andral", scheduledTime: "7:40 AM", completed: false },
+    { name: "🔄 Bapuji Nagar Circle", scheduledTime: "7:43 AM", completed: false },
+    { name: "🚌 Kanekal Bus Stand", scheduledTime: "7:46 AM", completed: false },
+    { name: "🏘️ Miller Pet", scheduledTime: "7:48 AM", completed: false },
+    { name: "🏭 Gangappa Gin", scheduledTime: "7:50 AM", completed: false },
+    { name: "💊 Sharada Medical Store", scheduledTime: "7:53 AM", completed: false },
+    { name: "🎦 Raghavendra Theatre", scheduledTime: "7:55 AM", completed: false },
+    { name: "🔄 Sangam Circle", scheduledTime: "7:57 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ],
+  16: [
+    { name: "🏘️ Shankar Town", scheduledTime: "7:20 AM", completed: false },
+    { name: "🔄 Old Gate Circle", scheduledTime: "7:22 AM", completed: false },
+    { name: "🚂 Railway Station", scheduledTime: "7:24 AM", completed: false },
+    { name: "🛍️ Vishal Mart", scheduledTime: "7:26 AM", completed: false },
+    { name: "🏛️ Grama Panchayat Office", scheduledTime: "7:28 AM", completed: false },
+    { name: "🛣️ Toranagallu Bye Pass", scheduledTime: "7:30 AM", completed: false },
+    { name: "🚌 Kudthini Bus Stand", scheduledTime: "7:38 AM", completed: false },
+    { name: "🛣️ Veniveenapura Bye Pass", scheduledTime: "7:43 AM", completed: false },
+    { name: "🏫 BITM main Gate", scheduledTime: "7:50 AM", completed: false },
+    { name: "🏘️ Allipur", scheduledTime: "7:52 AM", completed: false },
+    { name: "🏭 Daardmill", scheduledTime: "7:55 AM", completed: false },
+    { name: "🏛️ Karnataka Function Hall", scheduledTime: "7:57 AM", completed: false },
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  ]
 };
 
 export const drivers = [
