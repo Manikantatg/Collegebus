@@ -1,7 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { useAuth } from './AuthContext';
 import { BusData, BusStop, EtaRequest, Location } from '../types';
 import { busRoutes, drivers } from '../data/busRoutes';
 import { formatTime } from '../utils/geofence';
@@ -30,87 +27,37 @@ export const useBus = () => {
   return context;
 };
 
+// Initialize hardcoded bus data
+const initializeHardcodedBuses = (): Record<number, BusData> => {
+  const buses: Record<number, BusData> = {};
+  
+  Object.keys(busRoutes).forEach((busIdStr) => {
+    const busId = parseInt(busIdStr);
+    buses[busId] = {
+      id: busId,
+      currentStopIndex: 0,
+      eta: null,
+      route: busRoutes[busId].map(stop => ({
+        name: stop.name,
+        scheduledTime: stop.scheduledTime,
+        completed: false,
+        actualTime: undefined
+      })),
+      etaRequests: [],
+      notifications: [],
+      currentLocation: null,
+      currentDriver: null,
+      lastLog: null,
+      totalDistance: 0
+    };
+  });
+  
+  return buses;
+};
+
 export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [buses, setBuses] = useState<Record<number, BusData>>({});
+  const [buses, setBuses] = useState<Record<number, BusData>>(() => initializeHardcodedBuses());
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
-  const { user, loading } = useAuth();
-
-  // Initialize buses with default data if not in Firebase
-  useEffect(() => {
-    if (loading || !user) return;
-
-    const initializeBusesIfNeeded = async () => {
-      try {
-        // Check if buses exist in Firebase, if not initialize them
-        const busPromises = Object.keys(busRoutes).map(async (busId) => {
-          const busDoc = await getDoc(doc(db, 'buses', busId));
-          if (!busDoc.exists()) {
-            const busData = {
-              id: parseInt(busId),
-              currentStopIndex: 0,
-              eta: null,
-              route: busRoutes[parseInt(busId)],
-              etaRequests: [],
-              notifications: [],
-              currentLocation: null,
-              currentDriver: null,
-              lastLog: null,
-              isActive: false
-            };
-            await setDoc(doc(db, 'buses', busId), busData);
-            return { [parseInt(busId)]: busData };
-          }
-          return { [parseInt(busId)]: busDoc.data() as BusData };
-        });
-
-        const busResults = await Promise.all(busPromises);
-        const initialBuses = busResults.reduce((acc, bus) => ({ ...acc, ...bus }), {});
-        setBuses(initialBuses);
-      } catch (error) {
-        console.error('Error initializing buses:', error);
-        // Fallback to local data if Firebase fails
-        const localBuses: Record<number, BusData> = {};
-        Object.keys(busRoutes).forEach((busId) => {
-          localBuses[parseInt(busId)] = {
-            id: parseInt(busId),
-            currentStopIndex: 0,
-            eta: null,
-            route: busRoutes[parseInt(busId)],
-            etaRequests: [],
-            notifications: [],
-            currentLocation: null,
-            currentDriver: null,
-            lastLog: null,
-            isActive: false
-          };
-        });
-        setBuses(localBuses);
-      }
-    };
-
-    initializeBusesIfNeeded();
-  }, [user, loading]);
-
-  useEffect(() => {
-    // Set up real-time listeners after buses are initialized
-    if (loading || !user || Object.keys(buses).length === 0) return;
-
-    const unsubscribes = Object.keys(busRoutes).map((busId) => {
-      return onSnapshot(doc(db, 'buses', busId), (doc) => {
-        if (doc.exists()) {
-          const data = doc.data() as BusData;
-          setBuses((prev) => ({
-            ...prev,
-            [parseInt(busId)]: data,
-          }));
-        }
-      });
-    });
-
-    return () => {
-      unsubscribes.forEach((unsubscribe) => unsubscribe());
-    };
-  }, [user, loading, buses]);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
@@ -129,34 +76,45 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const log = {
       busId,
       driverId: driver.email,
-      driverName: driver.name,
+      driverEmail: driver.email,
       timestamp,
       type,
-      location,
+      location: {
+        lat: location.lat,
+        lng: location.lng,
+        timestamp,
+        speed: 0
+      }
     };
 
     const notification = {
-      type: 'update',
+      type: 'update' as const,
       message: `Driver ${type === 'entry' ? 'started' : 'ended'} shift at ${formattedTime}`,
       timestamp: formattedTime,
     };
 
-    const updatedBus = {
-      ...bus,
-      currentDriver: type === 'entry' ? { 
-        email: driver.email,
-        name: driver.name 
-      } : null,
-      isActive: type === 'entry',
-      currentLocation: type === 'entry' ? location : null,
-      lastLog: log,
-      notifications: [...(bus.notifications || []), notification].slice(-10),
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
+        ...bus,
+        currentDriver: type === 'entry' ? { 
+          uid: driver.email,
+          email: driver.email,
+          name: driver.name 
+        } : null,
+        currentLocation: type === 'entry' ? {
+          lat: location.lat,
+          lng: location.lng,
+          timestamp,
+          speed: 0
+        } : null,
+        lastLog: log,
+        notifications: [...(bus.notifications || []), notification].slice(-10),
+      }
+    }));
   };
 
-  const moveToNextStop = async (busId: number) => {
+  const moveToNextStop = (busId: number) => {
     const bus = buses[busId];
     if (!bus || bus.currentStopIndex >= bus.route.length - 1) return;
 
@@ -168,23 +126,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const notification = {
-      type: 'update',
-      message: `Bus moved to ${bus.route[bus.currentStopIndex + 1].name}`,
+      type: 'update' as const,
+      message: `Bus arrived at ${bus.route[bus.currentStopIndex].name}`,
       timestamp: getFormattedTime(),
     };
 
-    const updatedBus = {
-      ...bus,
-      currentStopIndex: bus.currentStopIndex + 1,
-      eta: null,
-      route: updatedRoute,
-      notifications: [...(bus.notifications || []), notification].slice(-10),
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
+        ...bus,
+        currentStopIndex: bus.currentStopIndex + 1,
+        eta: null,
+        route: updatedRoute,
+        notifications: [...(bus.notifications || []), notification].slice(-10),
+      }
+    }));
   };
 
-  const moveToPreviousStop = async (busId: number) => {
+  const moveToPreviousStop = (busId: number) => {
     const bus = buses[busId];
     if (!bus || bus.currentStopIndex <= 0) return;
 
@@ -196,23 +155,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const notification = {
-      type: 'update',
+      type: 'update' as const,
       message: `Bus returned to ${bus.route[bus.currentStopIndex - 1].name}`,
       timestamp: getFormattedTime(),
     };
 
-    const updatedBus = {
-      ...bus,
-      currentStopIndex: bus.currentStopIndex - 1,
-      eta: null,
-      route: updatedRoute,
-      notifications: [...(bus.notifications || []), notification].slice(-10),
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
+        ...bus,
+        currentStopIndex: bus.currentStopIndex - 1,
+        eta: null,
+        route: updatedRoute,
+        notifications: [...(bus.notifications || []), notification].slice(-10),
+      }
+    }));
   };
 
-  const setEta = async (busId: number, minutes: number) => {
+  const setEta = (busId: number, minutes: number) => {
     const bus = buses[busId];
     if (!bus) return;
 
@@ -226,77 +186,85 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     const notification = {
-      type: 'eta',
+      type: 'eta' as const,
       message: `ETA to ${nextStopName}: ${minutes} minutes`,
       timestamp: getFormattedTime(),
     };
 
-    const updatedBus = {
-      ...bus,
-      eta: minutes,
-      etaRequests: [...bus.etaRequests, newEtaRequest].slice(-9),
-      notifications: [...(bus.notifications || []), notification].slice(-10),
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
+        ...bus,
+        eta: minutes,
+        etaRequests: [...bus.etaRequests, newEtaRequest].slice(-9),
+        notifications: [...(bus.notifications || []), notification].slice(-10),
+      }
+    }));
   };
 
-  const requestStop = async (busId: number) => {
+  const requestStop = (busId: number) => {
     const bus = buses[busId];
     if (!bus) return;
 
     const notification = {
-      type: 'request',
+      type: 'request' as const,
       message: '5-minute stop requested by student',
       timestamp: getFormattedTime(),
     };
 
-    const updatedBus = {
-      ...bus,
-      notifications: [...(bus.notifications || []), notification].slice(-10),
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
+        ...bus,
+        notifications: [...(bus.notifications || []), notification].slice(-10),
+      }
+    }));
   };
 
-  const resetBusProgress = async (busId: number) => {
+  const resetBusProgress = (busId: number) => {
     const bus = buses[busId];
     if (!bus) return;
 
-    const updatedBus = {
-      ...bus,
-      currentStopIndex: 0,
-      eta: null,
-      route: bus.route.map(stop => ({
-        name: stop.name,
-        scheduledTime: stop.scheduledTime,
-        completed: false,
-        actualTime: undefined,
-      })),
-      etaRequests: [],
-      notifications: [],
-    };
-
-    await updateDoc(doc(db, 'buses', busId.toString()), updatedBus);
-  };
-
-  const reverseRoute = async () => {
-    const updatedBuses = { ...buses };
-    
-    for (const busId in updatedBuses) {
-      const bus = updatedBuses[busId];
-      const reversedRoute = [...bus.route].reverse().map(stop => ({
-        name: stop.name,
-        completed: false,
-        timestamp: null
-      }));
-      
-      await updateDoc(doc(db, 'buses', busId), {
+    setBuses(prev => ({
+      ...prev,
+      [busId]: {
         ...bus,
         currentStopIndex: 0,
-        route: reversedRoute
-      });
-    }
+        eta: null,
+        route: busRoutes[busId].map(stop => ({
+          name: stop.name,
+          scheduledTime: stop.scheduledTime,
+          completed: false,
+          actualTime: undefined,
+        })),
+        etaRequests: [],
+        notifications: [],
+      }
+    }));
+  };
+
+  const reverseRoute = () => {
+    setBuses(prev => {
+      const updatedBuses = { ...prev };
+      
+      for (const busId in updatedBuses) {
+        const bus = updatedBuses[busId];
+        const reversedRoute = [...bus.route].reverse().map(stop => ({
+          name: stop.name,
+          scheduledTime: stop.scheduledTime,
+          completed: false,
+          actualTime: undefined
+        }));
+        
+        updatedBuses[busId] = {
+          ...bus,
+          currentStopIndex: 0,
+          route: reversedRoute
+        };
+      }
+      
+      return updatedBuses;
+    });
   };
 
   return (
