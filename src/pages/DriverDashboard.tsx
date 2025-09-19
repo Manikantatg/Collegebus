@@ -92,11 +92,21 @@ const DriverDashboard: React.FC = () => {
   const busIdNum = busId ? parseInt(busId) : null;
   const busData = busIdNum ? buses[busIdNum] : null;
   
+  // Debug logging
+  console.log('Driver Dashboard - Bus ID:', busIdNum);
+  console.log('Driver Dashboard - Bus Data:', busData);
+  console.log('Driver Dashboard - All Buses:', buses);
+
   if (!busIdNum || !busData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
         <div className="text-center p-8">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Invalid Bus ID</h2>
+          <h2 className="text-2xl font-bold text-red-500 mb-4">
+            {!busIdNum ? 'Invalid Bus ID' : 'Loading Bus Data...'}
+          </h2>
+          {!busData && busIdNum && (
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mx-auto mb-4"></div>
+          )}
           <button 
             className="btn btn-primary" 
             onClick={() => navigate('/driver-login')}

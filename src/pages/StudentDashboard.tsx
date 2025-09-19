@@ -33,6 +33,11 @@ const StudentDashboard: React.FC = () => {
   // Selected bus data
   const busData = selectedBus ? buses[selectedBus] : null;
   const driverData = selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
+
+  // Debug logging
+  console.log('Selected Bus:', selectedBus);
+  console.log('Bus Data:', busData);
+  console.log('All Buses:', buses);
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
@@ -116,6 +121,18 @@ const StudentDashboard: React.FC = () => {
                   currentStopIndex={busData.currentStopIndex}
                   eta={busData.eta}
                 />
+              </motion.div>
+            )}
+
+            {/* Show loading or error state if no bus data */}
+            {selectedBus && !busData && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card mb-4 text-center py-8"
+              >
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-slate-600 dark:text-slate-400">Loading bus route...</p>
               </motion.div>
             )}
             

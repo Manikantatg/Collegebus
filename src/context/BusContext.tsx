@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 import { BusData, BusStop, EtaRequest, Location } from '../types';
@@ -35,24 +35,82 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
   const { user, loading } = useAuth();
 
+  // Initialize buses with default data if not in Firebase
   useEffect(() => {
-    // Don't initialize Firestore operations until auth is ready and user is logged in
     if (loading || !user) return;
+
+    const initializeBusesIfNeeded = async () => {
+      try {
+        // Check if buses exist in Firebase, if not initialize them
+        const busPromises = Object.keys(busRoutes).map(async (busId) => {
+          const busDoc = await getDoc(doc(db, 'buses', busId));
+          if (!busDoc.exists()) {
+            const busData = {
+              id: parseInt(busId),
+              currentStopIndex: 0,
+              eta: null,
+              route: busRoutes[parseInt(busId)],
+              etaRequests: [],
+              notifications: [],
+              currentLocation: null,
+              currentDriver: null,
+              lastLog: null,
+              isActive: false
+            };
+            await setDoc(doc(db, 'buses', busId), busData);
+            return { [parseInt(busId)]: busData };
+          }
+          return { [parseInt(busId)]: busDoc.data() as BusData };
+        });
+
+        const busResults = await Promise.all(busPromises);
+        const initialBuses = busResults.reduce((acc, bus) => ({ ...acc, ...bus }), {});
+        setBuses(initialBuses);
+      } catch (error) {
+        console.error('Error initializing buses:', error);
+        // Fallback to local data if Firebase fails
+        const localBuses: Record<number, BusData> = {};
+        Object.keys(busRoutes).forEach((busId) => {
+          localBuses[parseInt(busId)] = {
+            id: parseInt(busId),
+            currentStopIndex: 0,
+            eta: null,
+            route: busRoutes[parseInt(busId)],
+            etaRequests: [],
+            notifications: [],
+            currentLocation: null,
+            currentDriver: null,
+            lastLog: null,
+            isActive: false
+          };
+        });
+        setBuses(localBuses);
+      }
+    };
+
+    initializeBusesIfNeeded();
+  }, [user, loading]);
+
+  useEffect(() => {
+    // Set up real-time listeners after buses are initialized
+    if (loading || !user || Object.keys(buses).length === 0) return;
 
     const unsubscribes = Object.keys(busRoutes).map((busId) => {
       return onSnapshot(doc(db, 'buses', busId), (doc) => {
-        const data = doc.data() as BusData;
-        setBuses((prev) => ({
-          ...prev,
-          [parseInt(busId)]: data,
-        }));
+        if (doc.exists()) {
+          const data = doc.data() as BusData;
+          setBuses((prev) => ({
+            ...prev,
+            [parseInt(busId)]: data,
+          }));
+        }
       });
     });
 
     return () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
     };
-  }, [user, loading]);
+  }, [user, loading, buses]);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
