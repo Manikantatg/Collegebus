@@ -232,7 +232,7 @@ const DriverLogin: React.FC = () => {
               🚀 Demo Credentials:
             </h4>
             <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
-              <p><strong>Email:</strong> ramesh@gmail.com</p>
+              <p><strong>Email:</strong> mohan@ku.com</p>
               <p><strong>Password:</strong> driver123</p>
               <p className="text-blue-600 dark:text-blue-400 mt-2">
                 💡 All drivers use password: driver123
