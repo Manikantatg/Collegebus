@@ -31,7 +31,7 @@ const DriverLogin: React.FC = () => {
       toast.success('Login successful! Please select your bus number.');
     } catch (err: any) {
       console.error('Login error:', err);
-      if (err.code === 'auth/user-not-found') {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
         toast.error('No account found with this email address');
       } else if (err.code === 'auth/wrong-password') {
         toast.error('Incorrect password');

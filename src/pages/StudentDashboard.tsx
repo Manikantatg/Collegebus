@@ -11,6 +11,19 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { buses, selectedBus, setSelectedBus, requestStop } = useBus();
   const [showNotification, setShowNotification] = useState<string | null>(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
+  
+  // Auto-refresh every 3 seconds for student dashboard only
+  useEffect(() => {
+    if (!selectedBus) return;
+    
+    const interval = setInterval(() => {
+      setLastUpdateTime(new Date().toLocaleTimeString());
+      // Force re-render by updating a timestamp
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [selectedBus]);
   
   // Watch for updates to show notifications
   useEffect(() => {
@@ -48,7 +61,12 @@ const StudentDashboard: React.FC = () => {
             >
               <ArrowLeft size={20} />
             </motion.button>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white">Student Dashboard</h1>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Student Dashboard</h1>
+              {lastUpdateTime && (
+                <p className="text-xs text-slate-500">Last updated: {lastUpdateTime}</p>
+              )}
+            </div>
           </div>
           
           {selectedBus && (
@@ -98,16 +116,20 @@ const StudentDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="card mb-4"
+                key={`${selectedBus}-${busData.currentStopIndex}-${busData.eta}-${lastUpdateTime}`}
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Bus Route</h2>
                   
                   <div className="flex gap-2">
                     {busData.eta !== null && (
-                      <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                      <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
                         ETA: {busData.eta} min
                       </div>
                     )}
+                    <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-full text-xs">
+                      Live
+                    </div>
                   </div>
                 </div>
                 
@@ -116,11 +138,25 @@ const StudentDashboard: React.FC = () => {
                   currentStopIndex={busData.currentStopIndex}
                   eta={busData.eta}
                 />
+                
+                {/* Current Status */}
+                <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Current Status:</p>
+                      <p className="font-medium">
+                        {busData.currentStopIndex < busData.route.length 
+                          ? `En route to ${busData.route[busData.currentStopIndex]?.name || 'Unknown'}`
+                          : 'Route completed'
+                        }
+                      </p>
+                    </div>
+                    <Clock size={16} className="text-slate-400" />
+                  </div>
+                </div>
               </motion.div>
             )}
 
-            {/* Show loading or error state if no bus data */}
-            
             {/* Driver information */}
             {driverData && (
               <motion.div
@@ -133,6 +169,7 @@ const StudentDashboard: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="font-semibold">{driverData.name}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">{driverData.phone}</p>
                   </div>
                   <button
                     className="btn btn-outline py-2 text-sm"
@@ -142,6 +179,23 @@ const StudentDashboard: React.FC = () => {
                     <span>Contact Driver</span>
                   </button>
                 </div>
+              </motion.div>
+            )}
+            
+            {/* Request Stop Button */}
+            {busData && busData.currentStopIndex < busData.route.length && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-4"
+              >
+                <button
+                  className="btn btn-warning w-full"
+                  onClick={() => requestStop(selectedBus)}
+                >
+                  🛑 Request 5-Minute Stop
+                </button>
               </motion.div>
             )}
             

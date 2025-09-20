@@ -9,6 +9,7 @@ interface DriverActionsProps {
   onReset: () => void;
   stopName: string;
   currentTime: string;
+  isRouteCompleted?: boolean;
 }
 
 const DriverActions: React.FC<DriverActionsProps> = ({ 
@@ -17,17 +18,21 @@ const DriverActions: React.FC<DriverActionsProps> = ({
   onEta,
   onReset,
   stopName,
-  currentTime
+  currentTime,
+  isRouteCompleted = false
 }) => {
   return (
     <div className="w-full">
       <div className="card mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Current Stop: {stopName}</h3>
+          <h3 className="text-lg font-medium">
+            {isRouteCompleted ? 'Route Completed!' : `Current Stop: ${stopName}`}
+          </h3>
           <span className="text-sm text-slate-500">{currentTime}</span>
         </div>
         
-        <div className="flex flex-col gap-3">
+        {!isRouteCompleted && (
+          <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -84,7 +89,16 @@ const DriverActions: React.FC<DriverActionsProps> = ({
               🔟 min
             </motion.button>
           </div>
-        </div>
+          </div>
+        )}
+        
+        {isRouteCompleted && (
+          <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <p className="text-green-600 dark:text-green-400 font-medium">
+              🎉 All stops completed successfully!
+            </p>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-end mt-4">

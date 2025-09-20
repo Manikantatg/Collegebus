@@ -21,7 +21,7 @@ const AdminLogin: React.FC = () => {
       await login(email, password);
       navigate('/admin');
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid email or password. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }

@@ -33,7 +33,7 @@ const DriverDashboard: React.FC = () => {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [busId, setSelectedBus]);
+  }, [busId, setSelectedBus, watchId]);
 
   const startTracking = async () => {
     if (!navigator.geolocation) {
@@ -110,7 +110,7 @@ const DriverDashboard: React.FC = () => {
     );
   }
   
-  const currentStopName = busData.route[busData.currentStopIndex]?.name || 'Unknown Stop';
+  const currentStopName = busData.route[busData.currentStopIndex]?.name || 'Route Completed';
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-100 dark:from-slate-900 dark:to-slate-800">
@@ -213,6 +213,7 @@ const DriverDashboard: React.FC = () => {
                 }}
                 stopName={currentStopName}
                 currentTime={getFormattedTime()}
+                isRouteCompleted={busData.currentStopIndex >= busData.route.length}
               />
             </motion.div>
             

@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      console.error('Email/Password login failed:', error);
+      console.error('Login failed:', error);
       throw error;
     }
   };

@@ -15,6 +15,7 @@ interface BusContextType {
   requestStop: (busId: number) => void;
   logDriverAttendance: (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number }) => Promise<void>;
   reverseRoute: () => void;
+  loading: boolean;
 }
 
 const BusContext = createContext<BusContextType | undefined>(undefined);
@@ -55,16 +56,38 @@ const initializeHardcodedBuses = (): Record<number, BusData> => {
   return buses;
 };
 
+// Global bus state for cross-component updates
+let globalBusState: Record<number, BusData> = initializeHardcodedBuses();
+const subscribers: Set<(buses: Record<number, BusData>) => void> = new Set();
+
+const notifySubscribers = () => {
+  subscribers.forEach(callback => callback({ ...globalBusState }));
+};
+
 export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [buses, setBuses] = useState<Record<number, BusData>>(() => initializeHardcodedBuses());
+  const [buses, setBuses] = useState<Record<number, BusData>>(globalBusState);
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Subscribe to global state changes
+  useEffect(() => {
+    const updateBuses = (newBuses: Record<number, BusData>) => {
+      setBuses(newBuses);
+    };
+    
+    subscribers.add(updateBuses);
+    
+    return () => {
+      subscribers.delete(updateBuses);
+    };
+  }, []);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
 
   const logDriverAttendance = async (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number }) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus) return;
 
     const driver = drivers.find(d => d.bus === busId);
@@ -93,29 +116,28 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: formattedTime,
     };
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        currentDriver: type === 'entry' ? { 
-          uid: driver.email,
-          email: driver.email,
-          name: driver.name 
-        } : null,
-        currentLocation: type === 'entry' ? {
-          lat: location.lat,
-          lng: location.lng,
-          timestamp,
-          speed: 0
-        } : null,
-        lastLog: log,
-        notifications: [...(bus.notifications || []), notification].slice(-10),
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      currentDriver: type === 'entry' ? { 
+        uid: driver.email,
+        email: driver.email,
+        name: driver.name 
+      } : null,
+      currentLocation: type === 'entry' ? {
+        lat: location.lat,
+        lng: location.lng,
+        timestamp,
+        speed: 0
+      } : null,
+      lastLog: log,
+      notifications: [...(bus.notifications || []), notification].slice(-10),
+    };
+
+    notifySubscribers();
   };
 
   const moveToNextStop = (busId: number) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus || bus.currentStopIndex >= bus.route.length - 1) return;
 
     const updatedRoute = [...bus.route];
@@ -131,20 +153,19 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: getFormattedTime(),
     };
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        currentStopIndex: bus.currentStopIndex + 1,
-        eta: null,
-        route: updatedRoute,
-        notifications: [...(bus.notifications || []), notification].slice(-10),
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      currentStopIndex: bus.currentStopIndex + 1,
+      eta: null,
+      route: updatedRoute,
+      notifications: [...(bus.notifications || []), notification].slice(-10),
+    };
+
+    notifySubscribers();
   };
 
   const moveToPreviousStop = (busId: number) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus || bus.currentStopIndex <= 0) return;
 
     const updatedRoute = [...bus.route];
@@ -160,20 +181,19 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: getFormattedTime(),
     };
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        currentStopIndex: bus.currentStopIndex - 1,
-        eta: null,
-        route: updatedRoute,
-        notifications: [...(bus.notifications || []), notification].slice(-10),
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      currentStopIndex: bus.currentStopIndex - 1,
+      eta: null,
+      route: updatedRoute,
+      notifications: [...(bus.notifications || []), notification].slice(-10),
+    };
+
+    notifySubscribers();
   };
 
   const setEta = (busId: number, minutes: number) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus) return;
 
     const nextStopName = bus.route[bus.currentStopIndex + 1]?.name || 'next stop';
@@ -191,19 +211,18 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: getFormattedTime(),
     };
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        eta: minutes,
-        etaRequests: [...bus.etaRequests, newEtaRequest].slice(-9),
-        notifications: [...(bus.notifications || []), notification].slice(-10),
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      eta: minutes,
+      etaRequests: [...bus.etaRequests, newEtaRequest].slice(-9),
+      notifications: [...(bus.notifications || []), notification].slice(-10),
+    };
+
+    notifySubscribers();
   };
 
   const requestStop = (busId: number) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus) return;
 
     const notification = {
@@ -212,59 +231,53 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: getFormattedTime(),
     };
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        notifications: [...(bus.notifications || []), notification].slice(-10),
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      notifications: [...(bus.notifications || []), notification].slice(-10),
+    };
+
+    notifySubscribers();
   };
 
   const resetBusProgress = (busId: number) => {
-    const bus = buses[busId];
+    const bus = globalBusState[busId];
     if (!bus) return;
 
-    setBuses(prev => ({
-      ...prev,
-      [busId]: {
-        ...bus,
-        currentStopIndex: 0,
-        eta: null,
-        route: busRoutes[busId].map(stop => ({
-          name: stop.name,
-          scheduledTime: stop.scheduledTime,
-          completed: false,
-          actualTime: undefined,
-        })),
-        etaRequests: [],
-        notifications: [],
-      }
-    }));
+    globalBusState[busId] = {
+      ...bus,
+      currentStopIndex: 0,
+      eta: null,
+      route: busRoutes[busId].map(stop => ({
+        name: stop.name,
+        scheduledTime: stop.scheduledTime,
+        completed: false,
+        actualTime: undefined,
+      })),
+      etaRequests: [],
+      notifications: [],
+    };
+
+    notifySubscribers();
   };
 
   const reverseRoute = () => {
-    setBuses(prev => {
-      const updatedBuses = { ...prev };
+    for (const busId in globalBusState) {
+      const bus = globalBusState[busId];
+      const reversedRoute = [...bus.route].reverse().map(stop => ({
+        name: stop.name,
+        scheduledTime: stop.scheduledTime,
+        completed: false,
+        actualTime: undefined
+      }));
       
-      for (const busId in updatedBuses) {
-        const bus = updatedBuses[busId];
-        const reversedRoute = [...bus.route].reverse().map(stop => ({
-          name: stop.name,
-          scheduledTime: stop.scheduledTime,
-          completed: false,
-          actualTime: undefined
-        }));
-        
-        updatedBuses[busId] = {
-          ...bus,
-          currentStopIndex: 0,
-          route: reversedRoute
-        };
-      }
-      
-      return updatedBuses;
-    });
+      globalBusState[busId] = {
+        ...bus,
+        currentStopIndex: 0,
+        route: reversedRoute
+      };
+    }
+    
+    notifySubscribers();
   };
 
   return (
@@ -280,7 +293,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getFormattedTime,
         requestStop,
         logDriverAttendance,
-        reverseRoute
+        reverseRoute,
+        loading
       }}
     >
       {children}
