@@ -11,19 +11,6 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { buses, selectedBus, setSelectedBus, requestStop } = useBus();
   const [showNotification, setShowNotification] = useState<string | null>(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState<string>('');
-  
-  // Auto-refresh every 3 seconds for student dashboard only
-  useEffect(() => {
-    if (!selectedBus) return;
-    
-    const interval = setInterval(() => {
-      setLastUpdateTime(new Date().toLocaleTimeString());
-      // Force re-render by updating a timestamp
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, [selectedBus]);
   
   // Watch for updates to show notifications
   useEffect(() => {
@@ -63,9 +50,6 @@ const StudentDashboard: React.FC = () => {
             </motion.button>
             <div>
               <h1 className="text-xl font-bold text-slate-800 dark:text-white">Student Dashboard</h1>
-              {lastUpdateTime && (
-                <p className="text-xs text-slate-500">Last updated: {lastUpdateTime}</p>
-              )}
             </div>
           </div>
           
@@ -116,7 +100,7 @@ const StudentDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="card mb-4"
-                key={`${selectedBus}-${busData.currentStopIndex}-${busData.eta}-${lastUpdateTime}`}
+                key={`${selectedBus}-${busData.currentStopIndex}-${busData.eta}`}
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Bus Route</h2>
@@ -179,23 +163,6 @@ const StudentDashboard: React.FC = () => {
                     <span>Contact Driver</span>
                   </button>
                 </div>
-              </motion.div>
-            )}
-            
-            {/* Request Stop Button */}
-            {busData && busData.currentStopIndex < busData.route.length && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="mt-4"
-              >
-                <button
-                  className="btn btn-warning w-full"
-                  onClick={() => requestStop(selectedBus)}
-                >
-                  🛑 Request 5-Minute Stop
-                </button>
               </motion.div>
             )}
             

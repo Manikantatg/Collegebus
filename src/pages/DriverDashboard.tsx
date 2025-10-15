@@ -50,10 +50,10 @@ const DriverDashboard: React.FC = () => {
             speed: position.coords.speed,
             timestamp: new Date().toISOString()
           };
-          
+
           setLocationData(newLocation);
           setLocationError(null);
-          
+
           if (!isTracking) {
             setIsTracking(true);
             await logDriverAttendance(parseInt(busId!), 'entry', newLocation);
@@ -68,12 +68,16 @@ const DriverDashboard: React.FC = () => {
           maximumAge: 0
         }
       );
-      
+
       setWatchId(id);
     } catch (error) {
       setLocationError(`Failed to start tracking: ${error}`);
     }
   };
+
+  useEffect(() => {
+    startTracking();
+  }, []);
 
   const stopTracking = async () => {
     if (watchId) {
@@ -135,20 +139,11 @@ const DriverDashboard: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`btn ${isTracking ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white`}
-              onClick={isTracking ? stopTracking : startTracking}
+              className="btn bg-red-500 hover:bg-red-600 text-white"
+              onClick={stopTracking}
             >
-              {isTracking ? (
-                <>
-                  <Stop size={18} className="mr-2" />
-                  End Shift
-                </>
-              ) : (
-                <>
-                  <Play size={18} className="mr-2" />
-                  Start Shift
-                </>
-              )}
+              <Stop size={18} className="mr-2" />
+              End Shift
             </motion.button>
           </div>
         </div>

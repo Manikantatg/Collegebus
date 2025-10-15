@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bus, User, Shield } from 'lucide-react';
+import { Bus, User } from 'lucide-react';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -50,19 +50,6 @@ const Home: React.FC = () => {
         </motion.button>
       </div>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        className="btn btn-outline mt-4 text-lg py-3 px-8"
-        onClick={() => navigate('/admin-login')}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        <Shield size={20} />
-        <span className="font-medium">Admin Login</span>
-      </motion.button>
-      
       <motion.div
         className="mt-16 text-center text-sm text-slate-500 dark:text-slate-400"
         initial={{ opacity: 0 }}

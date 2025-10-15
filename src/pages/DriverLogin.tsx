@@ -221,24 +221,6 @@ const DriverLogin: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Demo Credentials */}
-          <motion.div 
-            className="mt-8 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              🚀 Demo Credentials:
-            </h4>
-            <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400">
-              <p><strong>Email:</strong> mohan@ku.com</p>
-              <p><strong>Password:</strong> driver123</p>
-              <p className="text-blue-600 dark:text-blue-400 mt-2">
-                💡 All drivers use password: driver123
-              </p>
-            </div>
-          </motion.div>
         </div>
       </motion.div>
 
