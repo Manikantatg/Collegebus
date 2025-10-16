@@ -25,18 +25,24 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
           className="absolute left-3 top-6 w-1 bg-green-500 rounded-full z-10"
           initial={{ height: 0 }}
           animate={{ 
-            height: `calc(${Math.max(0, currentStopIndex * 100 / (route.length - 1))}% - 12px)` 
+            height: route.length > 1 
+              ? `calc(${Math.max(0, currentStopIndex * 100 / (route.length - 1))}% - 12px)` 
+              : '0%'
           }}
           transition={{ duration: 0.5 }}
         ></motion.div>
         
-        {/* Bus icon */}
-        {currentStopIndex > 0 && currentStopIndex < route.length && (
+        {/* Bus icon - only show when there's a valid current stop */}
+        {currentStopIndex >= 0 && currentStopIndex < route.length && route.length > 0 && (
           <motion.div 
             className="absolute left-0 z-20 text-amber-500"
-            initial={{ top: `calc(${(currentStopIndex - 1) * 100 / (route.length - 1)}% - 4px + 24px)` }}
-            animate={{ top: `calc(${currentStopIndex * 100 / (route.length - 1)}% - 4px + 24px)` }}
-            transition={{ duration: 1, type: "spring" }}
+            initial={{ top: '24px' }}
+            animate={{ 
+              top: route.length > 1 
+                ? `calc(${currentStopIndex * 100 / (route.length - 1)}% - 4px + 24px)` 
+                : '24px'
+            }}
+            transition={{ duration: 0.8, type: "spring", stiffness: 300, damping: 30 }}
           >
             <span className="text-xl">🚌</span>
           </motion.div>

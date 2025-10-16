@@ -1,32 +1,72 @@
-import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { busRoutes } from '../data/busRoutes';
+import { collection, doc, setDoc, getDocs, Firestore } from 'firebase/firestore';
+import { busRoutes, drivers } from '../data/busRoutes';
+import { BusData } from '../types';
 
-async function initializeBuses() {
+/**
+ * Script to initialize buses with latest route data
+ * Run this to ensure all buses have the correct route information
+ */
+const initializeBuses = async () => {
   try {
-    for (const busId in busRoutes) {
-      const busData = {
-        id: parseInt(busId),
+    if (!db) {
+      console.error('Firebase not initialized');
+      return;
+    }
+
+    console.log('Initializing buses with latest route data...');
+    
+    // Clear existing data first
+    const busesCollection = collection(db as Firestore, 'buses');
+    const snapshot = await getDocs(busesCollection);
+    
+    const deletePromises = snapshot.docs.map(doc => 
+      deleteDoc(doc.ref)
+    );
+    
+    await Promise.all(deletePromises);
+    console.log(`Cleared ${snapshot.size} existing bus documents`);
+    
+    // Initialize buses with latest route data
+    const busIds = Object.keys(busRoutes).map(Number);
+    
+    for (const busId of busIds) {
+      const route = busRoutes[busId];
+      const driver = drivers.find(d => d.bus === busId);
+      
+      const busData: BusData = {
+        id: busId,
         currentStopIndex: 0,
         eta: null,
-        route: busRoutes[parseInt(busId)],
+        route: route.map(stop => ({ ...stop, completed: false })),
         etaRequests: [],
         notifications: [],
-        currentLocation: null,
-        currentDriver: null,
-        lastLog: null,
-        isActive: false
+        totalDistance: 0,
+        currentDriver: driver ? {
+          uid: driver.email,
+          email: driver.email,
+          name: driver.name
+        } : undefined
       };
-
-      await setDoc(doc(db, 'buses', busId), busData);
-      console.log(`Bus ${busId} initialized successfully`);
+      
+      const busRef = doc(db as Firestore, 'buses', busId.toString());
+      await setDoc(busRef, busData);
+      
+      console.log(`Initialized bus ${busId} with ${route.length} stops`);
     }
     
-    console.log('All buses initialized successfully');
+    console.log(`Successfully initialized ${busIds.length} buses!`);
   } catch (error) {
     console.error('Error initializing buses:', error);
   }
+};
+
+// Import deleteDoc
+import { deleteDoc } from 'firebase/firestore';
+
+// Run the function if this script is executed directly
+if (typeof window === 'undefined') {
+  initializeBuses();
 }
 
-// Run the initialization
-initializeBuses();
+export default initializeBuses;

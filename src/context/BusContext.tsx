@@ -79,12 +79,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               // Load data from Firebase
               snapshot.forEach((doc) => {
                 const data = doc.data();
-                busesMap[data.id] = {
+                // Ensure we're using the latest route data from our local definitions
+                const busId = data.id;
+                const localRoute = busRoutes[busId] || [];
+                
+                busesMap[busId] = {
                   ...data,
-                  id: data.id,
+                  id: busId,
                   currentStopIndex: data.currentStopIndex || 0,
                   eta: data.eta || null,
-                  route: data.route || [],
+                  // Use the latest route definition but preserve completion status
+                  route: mergeRouteData(localRoute, data.route || []),
                   etaRequests: data.etaRequests || [],
                   notifications: data.notifications || []
                 } as BusData;
@@ -111,6 +116,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
 
+    // Merge local route definitions with Firebase data to preserve completion status
+    const mergeRouteData = (localRoute: BusStop[], firebaseRoute: any[]): BusStop[] => {
+      // If firebase route is empty or doesn't match in length, use local route
+      if (!firebaseRoute || firebaseRoute.length !== localRoute.length) {
+        return localRoute.map(stop => ({ ...stop, completed: false }));
+      }
+      
+      // Merge completion status from Firebase with local route definitions
+      return localRoute.map((localStop, index) => {
+        const firebaseStop = firebaseRoute[index];
+        return {
+          ...localStop,
+          completed: firebaseStop?.completed || false,
+          actualTime: firebaseStop?.actualTime || undefined
+        };
+      });
+    };
+
     const loadLocalData = () => {
       const busesMap: Record<number, BusData> = {};
       
@@ -124,7 +147,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           id: busId,
           currentStopIndex: 0,
           eta: null,
-          route: route,
+          route: route.map(stop => ({ ...stop, completed: false })),
           etaRequests: [],
           notifications: [],
           totalDistance: 0
@@ -177,14 +200,18 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const unsubscribe = onSnapshot(busDocRef, (doc) => {
         if (doc.exists()) {
           const data = doc.data();
+          // Ensure we're using the latest route data from our local definitions
+          const localRoute = busRoutes[busId] || [];
+          
           setBuses(prevBuses => ({
             ...prevBuses,
             [busId]: {
               ...data,
-              id: data.id,
+              id: busId,
               currentStopIndex: data.currentStopIndex || 0,
               eta: data.eta || null,
-              route: data.route || [],
+              // Use the latest route definition but preserve completion status
+              route: mergeRouteData(localRoute, data.route || []),
               etaRequests: data.etaRequests || [],
               notifications: data.notifications || []
             } as BusData
@@ -202,6 +229,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeFunctions.forEach(unsub => unsub());
     };
   }, [buses, db]);
+
+  // Merge local route definitions with Firebase data to preserve completion status
+  const mergeRouteData = (localRoute: BusStop[], firebaseRoute: any[]): BusStop[] => {
+    // If firebase route is empty or doesn't match in length, use local route
+    if (!firebaseRoute || firebaseRoute.length !== localRoute.length) {
+      return localRoute.map(stop => ({ ...stop, completed: false }));
+    }
+    
+    // Merge completion status from Firebase with local route definitions
+    return localRoute.map((localStop, index) => {
+      const firebaseStop = firebaseRoute[index];
+      return {
+        ...localStop,
+        completed: firebaseStop?.completed || false,
+        actualTime: firebaseStop?.actualTime || undefined
+      };
+    });
+  };
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
@@ -488,11 +533,13 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetBusProgress = async (busId: number) => {
     try {
+      const localRoute = busRoutes[busId] || [];
+      
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
         if (updatedBuses[busId]) {
-          const resetRoute = updatedBuses[busId].route.map(stop => ({
+          const resetRoute = localRoute.map(stop => ({
             ...stop,
             completed: false,
             actualTime: undefined
@@ -513,14 +560,16 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Update Firebase
       const bus = buses[busId];
       if (bus) {
+        const resetRoute = localRoute.map(stop => ({
+          ...stop,
+          completed: false,
+          actualTime: undefined
+        }));
+        
         await updateBusInFirebase(busId, {
           currentStopIndex: 0,
           eta: null,
-          route: bus.route.map(stop => ({
-            ...stop,
-            completed: false,
-            actualTime: undefined
-          })),
+          route: resetRoute,
           etaRequests: [],
           notifications: []
         });
@@ -540,14 +589,15 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         Object.keys(updatedBuses).forEach(busIdStr => {
           const busId = parseInt(busIdStr);
           const bus = updatedBuses[busId];
+          const localRoute = busRoutes[busId] || [];
           
           // Reverse the route
-          const reversedRoute = [...bus.route].reverse();
+          const reversedRoute = [...localRoute].reverse();
           
           updatedBuses[busId] = {
             ...bus,
             currentStopIndex: 0,
-            route: reversedRoute
+            route: reversedRoute.map(stop => ({ ...stop, completed: false }))
           };
         });
         return updatedBuses;
@@ -555,9 +605,12 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase for all buses
       Object.values(buses).forEach(async (bus) => {
+        const localRoute = busRoutes[bus.id] || [];
+        const reversedRoute = [...localRoute].reverse();
+        
         await updateBusInFirebase(bus.id, {
           currentStopIndex: 0,
-          route: [...bus.route].reverse()
+          route: reversedRoute.map(stop => ({ ...stop, completed: false }))
         });
       });
 
