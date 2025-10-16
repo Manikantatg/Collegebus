@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
 
 // Firebase configuration
@@ -12,7 +12,7 @@ const firebaseConfig = {
   appId: "1:217343122092:web:15338fb293406602689d09"
 };
 
-// Initialize Firebase with proper types
+// Initialize Firebase with proper types and error handling
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
@@ -21,8 +21,19 @@ let googleProvider: GoogleAuthProvider | null = null;
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+  
+  // Configure Firestore settings for better connection handling
+  // Uncomment the following line if you want to use the emulator for development
+  // connectFirestoreEmulator(db, 'localhost', 8080);
+  
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
+  
+  // Configure Auth settings
+  if (auth) {
+    // Enable persistence for better offline support
+    // This requires additional imports and setup
+  }
 } catch (error) {
   console.error("Firebase initialization error:", error);
   // Fallback to prevent app crash

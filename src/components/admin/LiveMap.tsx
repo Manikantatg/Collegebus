@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Wifi, WifiOff } from 'lucide-react';
+import { MapPin, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useBus } from '../../context/BusContext';
 import { BusData } from '../../types';
 
 const LiveMap: React.FC = () => {
-  const { buses, loading, firebaseConnected } = useBus();
+  const { buses, loading, firebaseConnected, firebaseError } = useBus();
   const [selectedBus, setSelectedBus] = useState<BusData | null>(null);
 
   if (loading) {
@@ -20,9 +20,18 @@ const LiveMap: React.FC = () => {
     <div className="space-y-6">
       {/* Connection Status */}
       <div className={`flex items-center p-4 rounded-lg ${
-        firebaseConnected ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+        firebaseError 
+          ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
+          : firebaseConnected 
+            ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
+            : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
       }`}>
-        {firebaseConnected ? (
+        {firebaseError ? (
+          <>
+            <AlertTriangle size={20} className="mr-2" />
+            <span>Firebase Error: {firebaseError}</span>
+          </>
+        ) : firebaseConnected ? (
           <>
             <Wifi size={20} className="mr-2" />
             <span>Connected to Firebase</span>

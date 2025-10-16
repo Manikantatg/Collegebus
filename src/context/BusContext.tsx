@@ -2,22 +2,26 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   collection, 
   doc, 
-  getDocs, 
-  updateDoc, 
   onSnapshot, 
   setDoc,
-  query,
-  orderBy,
-  limit,
-  CollectionReference,
-  DocumentReference,
+  updateDoc,
+  getDoc,
   Firestore
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { BusData, BusStop, EtaRequest, Notification, Location } from '../types';
+import { BusData, BusStop, EtaRequest, Notification } from '../types';
 import { busRoutes, drivers } from '../data/busRoutes';
 import { formatTime } from '../utils/geofence';
 import { toast } from 'react-hot-toast';
+
+// Simplified bus state structure for Firebase
+interface BusState {
+  id: number;
+  currentStopIndex: number;
+  eta: number | null;
+  routeCompleted: boolean;
+  lastUpdated: string;
+}
 
 interface BusContextType {
   buses: Record<number, BusData>;
@@ -33,6 +37,7 @@ interface BusContextType {
   reverseRoute: () => void;
   loading: boolean;
   firebaseConnected: boolean;
+  firebaseError: string | null;
 }
 
 const BusContext = createContext<BusContextType | undefined>(undefined);
@@ -50,91 +55,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
-
-  // Initialize buses with data from Firebase or fallback to hardcoded data
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  
+  // Initialize buses with hardcoded routes
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
-    
-    const initializeBuses = async () => {
-      try {
-        if (!db) {
-          console.warn("Firebase not initialized, using local data");
-          loadLocalData();
-          return;
-        }
-
-        // Try to connect to Firebase
-        const busesCollection = collection(db as Firestore, 'buses');
-        const busesQuery = query(busesCollection, orderBy('id'), limit(20));
-        
-        unsubscribe = onSnapshot(busesQuery, 
-          (snapshot) => {
-            const busesMap: Record<number, BusData> = {};
-            
-            if (snapshot.empty) {
-              // No data in Firebase, initialize with local data
-              loadLocalData();
-              syncLocalDataToFirebase();
-            } else {
-              // Load data from Firebase
-              snapshot.forEach((doc) => {
-                const data = doc.data();
-                // Ensure we're using the latest route data from our local definitions
-                const busId = data.id;
-                const localRoute = busRoutes[busId] || [];
-                
-                busesMap[busId] = {
-                  ...data,
-                  id: busId,
-                  currentStopIndex: data.currentStopIndex || 0,
-                  eta: data.eta || null,
-                  // Use the latest route definition but preserve completion status
-                  route: mergeRouteData(localRoute, data.route || []),
-                  etaRequests: data.etaRequests || [],
-                  notifications: data.notifications || []
-                } as BusData;
-              });
-              
-              setBuses(busesMap);
-              setFirebaseConnected(true);
-            }
-            
-            setLoading(false);
-          },
-          (error) => {
-            console.error("Error fetching buses from Firebase:", error);
-            console.warn("Using local data as fallback");
-            loadLocalData();
-            setLoading(false);
-          }
-        );
-      } catch (error) {
-        console.error("Error initializing buses:", error);
-        console.warn("Using local data as fallback");
-        loadLocalData();
-        setLoading(false);
-      }
-    };
-
-    // Merge local route definitions with Firebase data to preserve completion status
-    const mergeRouteData = (localRoute: BusStop[], firebaseRoute: any[]): BusStop[] => {
-      // If firebase route is empty or doesn't match in length, use local route
-      if (!firebaseRoute || firebaseRoute.length !== localRoute.length) {
-        return localRoute.map(stop => ({ ...stop, completed: false }));
-      }
-      
-      // Merge completion status from Firebase with local route definitions
-      return localRoute.map((localStop, index) => {
-        const firebaseStop = firebaseRoute[index];
-        return {
-          ...localStop,
-          completed: firebaseStop?.completed || false,
-          actualTime: firebaseStop?.actualTime || undefined
-        };
-      });
-    };
-
-    const loadLocalData = () => {
+    const initializeBuses = () => {
       const busesMap: Record<number, BusData> = {};
       
       // Create buses from hardcoded data
@@ -155,111 +80,110 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       
       setBuses(busesMap);
-    };
-
-    const syncLocalDataToFirebase = async () => {
-      try {
-        if (!db) return;
-        
-        Object.values(buses).forEach(async (bus) => {
-          try {
-            const busRef = doc(db as Firestore, 'buses', bus.id.toString());
-            await setDoc(busRef, bus, { merge: true });
-          } catch (error) {
-            console.error(`Error syncing bus ${bus.id} to Firebase:`, error);
-          }
-        });
-        
-        setFirebaseConnected(true);
-      } catch (error) {
-        console.error("Error syncing local data to Firebase:", error);
-      }
+      setLoading(false);
     };
 
     initializeBuses();
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
   }, []);
 
-  // Real-time listener for individual bus updates
+  // Firebase listener for bus states only
   useEffect(() => {
     if (!db) return;
 
-    const unsubscribeFunctions: (() => void)[] = [];
-    
-    // Create a listener for each bus
-    Object.keys(buses).forEach(busIdStr => {
-      const busId = parseInt(busIdStr);
-      const busDocRef = doc(db as Firestore, 'buses', busId.toString());
-      
-      const unsubscribe = onSnapshot(busDocRef, (doc) => {
-        if (doc.exists()) {
-          const data = doc.data();
-          // Ensure we're using the latest route data from our local definitions
-          const localRoute = busRoutes[busId] || [];
+    const unsubscribe = onSnapshot(collection(db as Firestore, 'busStates'), 
+      (snapshot) => {
+        try {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified' || change.type === 'added') {
+              const busState = change.doc.data() as BusState;
+              const busId = busState.id;
+              
+              if (buses[busId]) {
+                // Update only the state, keep the hardcoded route
+                setBuses(prev => ({
+                  ...prev,
+                  [busId]: {
+                    ...prev[busId],
+                    currentStopIndex: busState.currentStopIndex,
+                    eta: busState.eta,
+                    route: prev[busId].route.map((stop, index) => ({
+                      ...stop,
+                      completed: index < busState.currentStopIndex
+                    })),
+                    routeCompleted: busState.routeCompleted
+                  }
+                }));
+              }
+            }
+          });
           
-          setBuses(prevBuses => ({
-            ...prevBuses,
-            [busId]: {
-              ...data,
-              id: busId,
-              currentStopIndex: data.currentStopIndex || 0,
-              eta: data.eta || null,
-              // Use the latest route definition but preserve completion status
-              route: mergeRouteData(localRoute, data.route || []),
-              etaRequests: data.etaRequests || [],
-              notifications: data.notifications || []
-            } as BusData
-          }));
+          setFirebaseConnected(true);
+          setFirebaseError(null);
+        } catch (error: any) {
+          console.error('Error processing bus state updates:', error);
+          setFirebaseError(`Update Error: ${error.message || 'Failed to process updates'}`);
         }
-      }, (error) => {
-        console.error(`Error listening to bus ${busId} updates:`, error);
-      });
-      
-      unsubscribeFunctions.push(unsubscribe);
-    });
+      },
+      (error: any) => {
+        console.error('Error listening to bus states:', error);
+        setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
+        setFirebaseConnected(false);
+      }
+    );
 
-    // Cleanup all listeners on unmount
-    return () => {
-      unsubscribeFunctions.forEach(unsub => unsub());
-    };
+    return () => unsubscribe();
   }, [buses, db]);
 
-  // Merge local route definitions with Firebase data to preserve completion status
-  const mergeRouteData = (localRoute: BusStop[], firebaseRoute: any[]): BusStop[] => {
-    // If firebase route is empty or doesn't match in length, use local route
-    if (!firebaseRoute || firebaseRoute.length !== localRoute.length) {
-      return localRoute.map(stop => ({ ...stop, completed: false }));
-    }
-    
-    // Merge completion status from Firebase with local route definitions
-    return localRoute.map((localStop, index) => {
-      const firebaseStop = firebaseRoute[index];
-      return {
-        ...localStop,
-        completed: firebaseStop?.completed || false,
-        actualTime: firebaseStop?.actualTime || undefined
-      };
-    });
-  };
+  // Initialize bus states in Firebase
+  useEffect(() => {
+    if (!db || Object.keys(buses).length === 0) return;
+
+    const initializeBusStates = async () => {
+      try {
+        const promises = Object.values(buses).map(async (bus) => {
+          const busState: BusState = {
+            id: bus.id,
+            currentStopIndex: bus.currentStopIndex,
+            eta: bus.eta,
+            routeCompleted: bus.currentStopIndex >= bus.route.length,
+            lastUpdated: new Date().toISOString()
+          };
+          
+          if (db) {
+            await setDoc(doc(db as Firestore, 'busStates', bus.id.toString()), busState, { merge: true });
+          }
+        });
+        
+        await Promise.all(promises);
+        setFirebaseConnected(true);
+        setFirebaseError(null);
+      } catch (error: any) {
+        console.error('Error initializing bus states:', error);
+        setFirebaseError(`Initialization Error: ${error.message || 'Failed to initialize bus states'}`);
+      }
+    };
+
+    initializeBusStates();
+  }, [buses, db]);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
 
-  const updateBusInFirebase = async (busId: number, updates: Partial<BusData>) => {
-    if (!db || !firebaseConnected) return;
+  // Update bus state in Firebase
+  const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
+    if (!db || !firebaseConnected) {
+      console.warn('Firebase not connected, skipping update');
+      return;
+    }
 
     try {
-      const busRef = doc(db as Firestore, 'buses', busId.toString());
+      const busRef = doc(db as Firestore, 'busStates', busId.toString());
       await updateDoc(busRef, updates);
-    } catch (error) {
-      console.error(`Error updating bus ${busId} in Firebase:`, error);
+      setFirebaseError(null);
+    } catch (error: any) {
+      console.error(`Error updating bus state ${busId}:`, error);
+      setFirebaseError(`Update Error: ${error.message || 'Failed to update bus state'}`);
     }
   };
 
@@ -268,7 +192,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const driver = drivers.find(d => d.bus === busId);
       if (!driver) return;
 
-      const formattedTime = formatTime(new Date());
+      const formattedTime = getFormattedTime();
       
       // Update local state
       setBuses(prev => {
@@ -297,36 +221,33 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             };
           }
           
-          // Add notification
+          // Add notification (only once)
           const newNotification: Notification = {
             type: 'update',
             message: `Driver ${type === 'entry' ? 'started' : 'ended'} shift at ${formattedTime}`,
             timestamp: formattedTime
           };
           
-          updatedBuses[busId].notifications.unshift(newNotification);
+          // Prevent duplicate notifications
+          const existingNotification = updatedBuses[busId].notifications.find(
+            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
+          );
+          
+          if (!existingNotification) {
+            updatedBuses[busId].notifications.unshift(newNotification);
+            // Keep only the latest 5 notifications
+            if (updatedBuses[busId].notifications.length > 5) {
+              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
+            }
+          }
         }
         return updatedBuses;
       });
 
-      // Update Firebase
-      await updateBusInFirebase(busId, {
-        currentDriver: type === 'entry' ? {
-          uid: driver.email,
-          email: driver.email,
-          name: driver.name
-        } : undefined,
-        currentLocation: type === 'entry' ? {
-          lat: location.lat,
-          lng: location.lng,
-          timestamp: new Date().toISOString(),
-          speed: 0
-        } : undefined
-      });
-
       toast.success(`Driver ${type} logged successfully`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error logging driver attendance:', error);
+      setFirebaseError(`Attendance Error: ${error.message || 'Failed to log attendance'}`);
       toast.error('Failed to log attendance');
     }
   };
@@ -358,32 +279,41 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             route: updatedRoute
           };
 
-          // Add notification
+          // Add notification (only once)
           const newNotification: Notification = {
             type: 'update',
             message: `Bus arrived at ${currentStop.name}`,
             timestamp: formattedTime
           };
           
-          updatedBuses[busId].notifications.unshift(newNotification);
+          // Prevent duplicate notifications
+          const existingNotification = updatedBuses[busId].notifications.find(
+            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
+          );
+          
+          if (!existingNotification) {
+            updatedBuses[busId].notifications.unshift(newNotification);
+            // Keep only the latest 5 notifications
+            if (updatedBuses[busId].notifications.length > 5) {
+              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
+            }
+          }
         }
         return updatedBuses;
       });
 
-      // Update Firebase
-      await updateBusInFirebase(busId, {
+      // Update Firebase state
+      await updateBusStateInFirebase(busId, {
         currentStopIndex: bus.currentStopIndex + 1,
         eta: null,
-        route: bus.route.map((stop, index) => 
-          index === bus.currentStopIndex 
-            ? { ...stop, completed: true, actualTime: formattedTime } 
-            : stop
-        )
+        routeCompleted: bus.currentStopIndex + 1 >= bus.route.length,
+        lastUpdated: new Date().toISOString()
       });
 
       toast.success('Moved to next stop');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error moving to next stop:', error);
+      setFirebaseError(`Navigation Error: ${error.message || 'Failed to move to next stop'}`);
       toast.error('Failed to update stop');
     }
   };
@@ -416,32 +346,41 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             route: updatedRoute
           };
 
-          // Add notification
+          // Add notification (only once)
           const newNotification: Notification = {
             type: 'update',
             message: `Bus returned to ${previousStop.name}`,
             timestamp: formattedTime
           };
           
-          updatedBuses[busId].notifications.unshift(newNotification);
+          // Prevent duplicate notifications
+          const existingNotification = updatedBuses[busId].notifications.find(
+            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
+          );
+          
+          if (!existingNotification) {
+            updatedBuses[busId].notifications.unshift(newNotification);
+            // Keep only the latest 5 notifications
+            if (updatedBuses[busId].notifications.length > 5) {
+              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
+            }
+          }
         }
         return updatedBuses;
       });
 
-      // Update Firebase
-      await updateBusInFirebase(busId, {
+      // Update Firebase state
+      await updateBusStateInFirebase(busId, {
         currentStopIndex: previousStopIndex,
         eta: null,
-        route: bus.route.map((stop, index) => 
-          index === previousStopIndex 
-            ? { ...stop, completed: false, actualTime: undefined } 
-            : stop
-        )
+        routeCompleted: false,
+        lastUpdated: new Date().toISOString()
       });
 
       toast.success('Returned to previous stop');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error moving to previous stop:', error);
+      setFirebaseError(`Navigation Error: ${error.message || 'Failed to return to previous stop'}`);
       toast.error('Failed to update stop');
     }
   };
@@ -463,7 +402,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             eta: minutes
           };
 
-          // Add ETA request
+          // Add ETA request (only once)
           const newEtaRequest: EtaRequest = {
             stopIndex: bus.currentStopIndex,
             minutes: minutes,
@@ -471,28 +410,52 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             nextStop: nextStopName
           };
           
-          updatedBuses[busId].etaRequests.unshift(newEtaRequest);
+          // Prevent duplicate ETA requests
+          const existingRequest = updatedBuses[busId].etaRequests.find(
+            r => r.stopIndex === newEtaRequest.stopIndex && r.minutes === newEtaRequest.minutes
+          );
+          
+          if (!existingRequest) {
+            updatedBuses[busId].etaRequests.unshift(newEtaRequest);
+            // Keep only the latest 5 requests
+            if (updatedBuses[busId].etaRequests.length > 5) {
+              updatedBuses[busId].etaRequests = updatedBuses[busId].etaRequests.slice(0, 5);
+            }
+          }
 
-          // Add notification
+          // Add notification (only once)
           const newNotification: Notification = {
             type: 'eta',
             message: `ETA to ${nextStopName}: ${minutes} minutes`,
             timestamp: formattedTime
           };
           
-          updatedBuses[busId].notifications.unshift(newNotification);
+          // Prevent duplicate notifications
+          const existingNotification = updatedBuses[busId].notifications.find(
+            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
+          );
+          
+          if (!existingNotification) {
+            updatedBuses[busId].notifications.unshift(newNotification);
+            // Keep only the latest 5 notifications
+            if (updatedBuses[busId].notifications.length > 5) {
+              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
+            }
+          }
         }
         return updatedBuses;
       });
 
-      // Update Firebase
-      await updateBusInFirebase(busId, {
-        eta: minutes
+      // Update Firebase state
+      await updateBusStateInFirebase(busId, {
+        eta: minutes,
+        lastUpdated: new Date().toISOString()
       });
 
       toast.success('ETA set successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error setting ETA:', error);
+      setFirebaseError(`ETA Error: ${error.message || 'Failed to set ETA'}`);
       toast.error('Failed to set ETA');
     }
   };
@@ -511,35 +474,37 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             timestamp: formattedTime
           };
           
-          updatedBuses[busId].notifications.unshift(newNotification);
+          // Prevent duplicate notifications
+          const existingNotification = updatedBuses[busId].notifications.find(
+            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
+          );
+          
+          if (!existingNotification) {
+            updatedBuses[busId].notifications.unshift(newNotification);
+            // Keep only the latest 5 notifications
+            if (updatedBuses[busId].notifications.length > 5) {
+              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
+            }
+          }
         }
         return updatedBuses;
       });
 
-      // Update Firebase
-      const bus = buses[busId];
-      if (bus) {
-        await updateBusInFirebase(busId, {
-          notifications: bus.notifications
-        });
-      }
-
       toast.success('Stop request sent to driver');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error requesting stop:', error);
+      setFirebaseError(`Request Error: ${error.message || 'Failed to request stop'}`);
       toast.error('Failed to request stop');
     }
   };
 
   const resetBusProgress = async (busId: number) => {
     try {
-      const localRoute = busRoutes[busId] || [];
-      
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
         if (updatedBuses[busId]) {
-          const resetRoute = localRoute.map(stop => ({
+          const resetRoute = updatedBuses[busId].route.map(stop => ({
             ...stop,
             completed: false,
             actualTime: undefined
@@ -557,27 +522,18 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase
-      const bus = buses[busId];
-      if (bus) {
-        const resetRoute = localRoute.map(stop => ({
-          ...stop,
-          completed: false,
-          actualTime: undefined
-        }));
-        
-        await updateBusInFirebase(busId, {
-          currentStopIndex: 0,
-          eta: null,
-          route: resetRoute,
-          etaRequests: [],
-          notifications: []
-        });
-      }
+      // Update Firebase state
+      await updateBusStateInFirebase(busId, {
+        currentStopIndex: 0,
+        eta: null,
+        routeCompleted: false,
+        lastUpdated: new Date().toISOString()
+      });
 
       toast.success('Route reset successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting bus progress:', error);
+      setFirebaseError(`Reset Error: ${error.message || 'Failed to reset route'}`);
       toast.error('Failed to reset route');
     }
   };
@@ -589,34 +545,23 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         Object.keys(updatedBuses).forEach(busIdStr => {
           const busId = parseInt(busIdStr);
           const bus = updatedBuses[busId];
-          const localRoute = busRoutes[busId] || [];
           
           // Reverse the route
-          const reversedRoute = [...localRoute].reverse();
+          const reversedRoute = [...bus.route].reverse();
           
           updatedBuses[busId] = {
             ...bus,
             currentStopIndex: 0,
-            route: reversedRoute.map(stop => ({ ...stop, completed: false }))
+            route: reversedRoute
           };
         });
         return updatedBuses;
       });
 
-      // Update Firebase for all buses
-      Object.values(buses).forEach(async (bus) => {
-        const localRoute = busRoutes[bus.id] || [];
-        const reversedRoute = [...localRoute].reverse();
-        
-        await updateBusInFirebase(bus.id, {
-          currentStopIndex: 0,
-          route: reversedRoute.map(stop => ({ ...stop, completed: false }))
-        });
-      });
-
       toast.success('All routes reversed');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error reversing routes:', error);
+      setFirebaseError(`Reverse Error: ${error.message || 'Failed to reverse routes'}`);
       toast.error('Failed to reverse routes');
     }
   };
@@ -636,7 +581,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logDriverAttendance,
         reverseRoute,
         loading,
-        firebaseConnected
+        firebaseConnected,
+        firebaseError
       }}
     >
       {children}

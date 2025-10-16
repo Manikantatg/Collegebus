@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LogOut, Play, Store as Stop, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, LogOut, Play, Store as Stop, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import RouteDisplay from '../components/RouteDisplay';
 import DriverActions from '../components/DriverActions';
 import EtaRequests from '../components/EtaRequests';
@@ -17,7 +17,7 @@ interface LocationData {
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { busId } = useParams<{ busId: string }>();
-  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, logDriverAttendance } = useBus();
+  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, logDriverAttendance, firebaseConnected, firebaseError } = useBus();
   
   const [isTracking, setIsTracking] = useState(false);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
@@ -152,9 +152,18 @@ const DriverDashboard: React.FC = () => {
       <main className="container mx-auto px-4 py-6">
         {/* Connection Status */}
         <div className={`mb-4 flex items-center p-3 rounded-lg ${
-          buses && Object.keys(buses).length > 0 ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+          firebaseError 
+            ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
+            : firebaseConnected 
+              ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
+              : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
         }`}>
-          {buses && Object.keys(buses).length > 0 ? (
+          {firebaseError ? (
+            <>
+              <AlertTriangle size={18} className="mr-2" />
+              <span>Firebase Error: {firebaseError}</span>
+            </>
+          ) : firebaseConnected ? (
             <>
               <Wifi size={18} className="mr-2" />
               <span>Connected to data system</span>
