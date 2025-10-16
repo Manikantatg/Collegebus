@@ -1,14 +1,14 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read/write access for busStates collection
-    match /busStates/{document} {
+    // Allow public read/write access for busStates collection only
+    match /busStates/{busId} {
       allow read, write: if true;
     }
     
-    // Allow public read/write access for any other collections used
+    // Deny access to all other collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

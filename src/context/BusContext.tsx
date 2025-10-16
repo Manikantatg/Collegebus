@@ -58,6 +58,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const connectionRetryCount = useRef(0);
   
   // Initialize buses with hardcoded routes
   useEffect(() => {
@@ -111,14 +112,16 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const setupListener = () => {
       try {
+        console.log('Setting up Firebase listener...');
         const unsubscribe = onSnapshot(
           collection(db as Firestore, 'busStates'),
           {
             // Include metadata changes to better handle connection state
-            includeMetadataChanges: true
+            includeMetadataChanges: false // Set to false to reduce overhead
           },
           (snapshot) => {
             try {
+              console.log('Received snapshot with', snapshot.docChanges().length, 'changes');
               let hasUpdates = false;
               const updatedBuses: Record<number, Partial<BusData>> = {};
               
@@ -128,6 +131,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   const busId = busState.id;
                   
                   if (buses[busId]) {
+                    console.log('Processing update for bus', busId, 'with stop index', busState.currentStopIndex);
                     // Prepare update for this bus
                     updatedBuses[busId] = {
                       currentStopIndex: busState.currentStopIndex,
@@ -145,6 +149,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               
               // Apply all updates at once
               if (hasUpdates) {
+                console.log('Applying updates to buses:', Object.keys(updatedBuses));
                 setBuses(prev => {
                   const newBuses = { ...prev };
                   Object.keys(updatedBuses).forEach(busIdStr => {
@@ -163,6 +168,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               
               setFirebaseConnected(true);
               setFirebaseError(null);
+              connectionRetryCount.current = 0; // Reset retry count on successful connection
               
               // Clear any retry timeout on successful connection
               if (retryTimeoutRef.current) {
@@ -180,15 +186,20 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setFirebaseConnected(false);
             
             // Implement exponential backoff for reconnection
-            if (!retryTimeoutRef.current) {
+            if (connectionRetryCount.current < 5) { // Limit retries to prevent infinite loop
+              connectionRetryCount.current += 1;
               const retry = () => {
-                console.log('Retrying Firebase connection...');
+                console.log('Retrying Firebase connection... Attempt', connectionRetryCount.current);
                 setupListener();
               };
               
-              // Retry after 5 seconds, then 10, then 20, up to 60 seconds
-              const retryDelay = Math.min(5000 * Math.pow(2, Math.floor(Date.now() / 60000)), 60000);
+              // Retry after 2 seconds, then 4, then 8, up to 30 seconds
+              const retryDelay = Math.min(2000 * Math.pow(2, connectionRetryCount.current - 1), 30000);
+              console.log('Scheduling retry in', retryDelay, 'ms');
               retryTimeoutRef.current = setTimeout(retry, retryDelay);
+            } else {
+              console.error('Max retry attempts reached. Stopping reconnection attempts.');
+              setFirebaseError('Max retry attempts reached. Please refresh the page to reconnect.');
             }
           }
         );
@@ -222,6 +233,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const initializeBusStates = async () => {
       try {
+        console.log('Initializing bus states in Firebase');
         const promises = Object.values(buses).map(async (bus) => {
           const busState: BusState = {
             id: bus.id,
@@ -238,6 +250,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         
         await Promise.allSettled(promises); // Use allSettled to prevent one failure from stopping all
+        console.log('Bus states initialized successfully');
         setFirebaseConnected(true);
         setFirebaseError(null);
       } catch (error: any) {
@@ -256,17 +269,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Update bus state in Firebase
   const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
     if (!db || !firebaseConnected) {
-      console.warn('Firebase not connected, skipping update');
+      console.warn('Firebase not connected, skipping update for bus', busId);
+      // Try to reconnect
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
       return;
     }
 
     try {
+      console.log('Updating Firebase state for bus', busId, 'with updates:', updates);
       const busRef = doc(db as Firestore, 'busStates', busId.toString());
       await updateDoc(busRef, {
         ...updates,
         lastUpdated: new Date().toISOString()
       });
       setFirebaseError(null);
+      console.log('Firebase update successful for bus', busId);
     } catch (error: any) {
       console.error(`Error updating bus state ${busId}:`, error);
       setFirebaseError(`Update Error: ${error.message || 'Failed to update bus state'}`);

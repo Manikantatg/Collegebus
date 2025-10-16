@@ -10,14 +10,14 @@ The Firestore security rules have been updated to allow public read/write access
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow public read/write access for busStates collection
-    match /busStates/{document} {
+    // Allow public read/write access for busStates collection only
+    match /busStates/{busId} {
       allow read, write: if true;
     }
     
-    // Allow public read/write access for any other collections used
+    // Deny access to all other collections
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }
@@ -42,6 +42,14 @@ To deploy these security rules to your Firebase project, follow these steps:
    firebase deploy --only firestore:rules
    ```
 
+## Domain Authorization
+
+The OAuth domain authorization error indicates that your domain needs to be added to the Firebase Authentication settings:
+
+1. Go to the Firebase Console
+2. Navigate to Authentication -> Settings -> Authorized domains
+3. Add your domain (e.g., kuclgbus.netlify.app) to the list
+
 ## Production Security Considerations
 
 For production deployment, you should implement proper authentication and authorization:
@@ -51,13 +59,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // Only authenticated users can read/write bus states
-    match /busStates/{document} {
+    match /busStates/{busId} {
       allow read, write: if request.auth != null;
     }
     
-    // Only authenticated users can read/write any document
+    // Deny access to all other collections
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
