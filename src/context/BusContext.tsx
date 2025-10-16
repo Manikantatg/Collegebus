@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { 
   collection, 
   doc, 
@@ -56,6 +56,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [loading, setLoading] = useState(true);
   const [firebaseConnected, setFirebaseConnected] = useState(false);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize buses with hardcoded routes
   useEffect(() => {
@@ -75,7 +77,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           route: route.map(stop => ({ ...stop, completed: false })),
           etaRequests: [],
           notifications: [],
-          totalDistance: 0
+          totalDistance: 0,
+          routeCompleted: false
         };
       });
       
@@ -84,75 +87,136 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     initializeBuses();
+    
+    // Cleanup function
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+      }
+    };
   }, []);
 
-  // Firebase listener for bus states only
+  // Firebase listener for bus states only (with better error handling)
   useEffect(() => {
     if (!db) return;
 
-    const unsubscribe = onSnapshot(collection(db as Firestore, 'busStates'), 
-      (snapshot) => {
-        try {
-          let hasUpdates = false;
-          const updatedBuses: Record<number, Partial<BusData>> = {};
-          
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'modified' || change.type === 'added') {
-              const busState = change.doc.data() as BusState;
-              const busId = busState.id;
+    // Clear any existing subscription
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    const setupListener = () => {
+      try {
+        const unsubscribe = onSnapshot(
+          collection(db as Firestore, 'busStates'),
+          {
+            // Include metadata changes to better handle connection state
+            includeMetadataChanges: true
+          },
+          (snapshot) => {
+            try {
+              let hasUpdates = false;
+              const updatedBuses: Record<number, Partial<BusData>> = {};
               
-              if (buses[busId]) {
-                // Prepare update for this bus
-                updatedBuses[busId] = {
-                  currentStopIndex: busState.currentStopIndex,
-                  eta: busState.eta,
-                  route: buses[busId].route.map((stop, index) => ({
-                    ...stop,
-                    completed: index < busState.currentStopIndex
-                  })),
-                  routeCompleted: busState.routeCompleted
-                };
-                hasUpdates = true;
-              }
-            }
-          });
-          
-          // Apply all updates at once
-          if (hasUpdates) {
-            setBuses(prev => {
-              const newBuses = { ...prev };
-              Object.keys(updatedBuses).forEach(busIdStr => {
-                const busId = parseInt(busIdStr);
-                const updates = updatedBuses[busId];
-                if (newBuses[busId] && updates) {
-                  newBuses[busId] = {
-                    ...newBuses[busId],
-                    ...updates
-                  } as BusData;
+              snapshot.docChanges().forEach((change) => {
+                if (change.type === 'modified' || change.type === 'added') {
+                  const busState = change.doc.data() as BusState;
+                  const busId = busState.id;
+                  
+                  if (buses[busId]) {
+                    // Prepare update for this bus
+                    updatedBuses[busId] = {
+                      currentStopIndex: busState.currentStopIndex,
+                      eta: busState.eta,
+                      route: buses[busId].route.map((stop, index) => ({
+                        ...stop,
+                        completed: index < busState.currentStopIndex
+                      })),
+                      routeCompleted: busState.routeCompleted
+                    };
+                    hasUpdates = true;
+                  }
                 }
               });
-              return newBuses;
-            });
+              
+              // Apply all updates at once
+              if (hasUpdates) {
+                setBuses(prev => {
+                  const newBuses = { ...prev };
+                  Object.keys(updatedBuses).forEach(busIdStr => {
+                    const busId = parseInt(busIdStr);
+                    const updates = updatedBuses[busId];
+                    if (newBuses[busId] && updates) {
+                      newBuses[busId] = {
+                        ...newBuses[busId],
+                        ...updates
+                      } as BusData;
+                    }
+                  });
+                  return newBuses;
+                });
+              }
+              
+              setFirebaseConnected(true);
+              setFirebaseError(null);
+              
+              // Clear any retry timeout on successful connection
+              if (retryTimeoutRef.current) {
+                clearTimeout(retryTimeoutRef.current);
+                retryTimeoutRef.current = null;
+              }
+            } catch (error: any) {
+              console.error('Error processing bus state updates:', error);
+              setFirebaseError(`Update Error: ${error.message || 'Failed to process updates'}`);
+            }
+          },
+          (error: any) => {
+            console.error('Error listening to bus states:', error);
+            setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
+            setFirebaseConnected(false);
+            
+            // Implement exponential backoff for reconnection
+            if (!retryTimeoutRef.current) {
+              const retry = () => {
+                console.log('Retrying Firebase connection...');
+                setupListener();
+              };
+              
+              // Retry after 5 seconds, then 10, then 20, up to 60 seconds
+              const retryDelay = Math.min(5000 * Math.pow(2, Math.floor(Date.now() / 60000)), 60000);
+              retryTimeoutRef.current = setTimeout(retry, retryDelay);
+            }
           }
-          
-          setFirebaseConnected(true);
-          setFirebaseError(null);
-        } catch (error: any) {
-          console.error('Error processing bus state updates:', error);
-          setFirebaseError(`Update Error: ${error.message || 'Failed to process updates'}`);
-        }
-      },
-      (error: any) => {
-        console.error('Error listening to bus states:', error);
-        setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
+        );
+        
+        unsubscribeRef.current = unsubscribe;
+      } catch (error: any) {
+        console.error('Error setting up Firebase listener:', error);
+        setFirebaseError(`Setup Error: ${error.message || 'Failed to setup listener'}`);
         setFirebaseConnected(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    setupListener();
+
+    // Cleanup function
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
+    };
   }, [buses, db]);
 
-  // Initialize bus states in Firebase
+  // Initialize bus states in Firebase (with better error handling)
   useEffect(() => {
     if (!db || Object.keys(buses).length === 0) return;
 
@@ -163,16 +227,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             id: bus.id,
             currentStopIndex: bus.currentStopIndex,
             eta: bus.eta,
-            routeCompleted: bus.currentStopIndex >= bus.route.length,
+            routeCompleted: bus.routeCompleted || false,
             lastUpdated: new Date().toISOString()
           };
           
           if (db) {
+            // Use setDoc with merge to avoid overwriting existing data
             await setDoc(doc(db as Firestore, 'busStates', bus.id.toString()), busState, { merge: true });
           }
         });
         
-        await Promise.all(promises);
+        await Promise.allSettled(promises); // Use allSettled to prevent one failure from stopping all
         setFirebaseConnected(true);
         setFirebaseError(null);
       } catch (error: any) {
@@ -205,6 +270,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (error: any) {
       console.error(`Error updating bus state ${busId}:`, error);
       setFirebaseError(`Update Error: ${error.message || 'Failed to update bus state'}`);
+      
+      // If it's a permission error, show a more user-friendly message
+      if (error.code === 'permission-denied') {
+        toast.error('Permission denied. Please check your credentials.');
+      }
     }
   };
 
@@ -297,7 +367,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...updatedBuses[busId],
             currentStopIndex: bus.currentStopIndex + 1,
             eta: null,
-            route: updatedRoute
+            route: updatedRoute,
+            routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
           };
 
           // Add notification (only once)
@@ -363,7 +434,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...updatedBuses[busId],
             currentStopIndex: previousStopIndex,
             eta: null,
-            route: updatedRoute
+            route: updatedRoute,
+            routeCompleted: false
           };
 
           // Add notification (only once)
@@ -534,7 +606,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             eta: null,
             route: resetRoute,
             etaRequests: [],
-            notifications: []
+            notifications: [],
+            routeCompleted: false
           };
         }
         return updatedBuses;
@@ -569,7 +642,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedBuses[busId] = {
             ...bus,
             currentStopIndex: 0,
-            route: reversedRoute
+            route: reversedRoute,
+            routeCompleted: false
           };
         });
         return updatedBuses;

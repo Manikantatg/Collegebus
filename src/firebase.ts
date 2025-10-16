@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, Firestore, connectFirestoreEmulator, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
 
 // Firebase configuration
@@ -21,6 +21,19 @@ let googleProvider: GoogleAuthProvider | null = null;
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
+  
+  // Enable offline persistence
+  if (typeof window !== 'undefined') {
+    enableIndexedDbPersistence(db).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        // Multiple tabs open, persistence can only be enabled in one tab at a time
+        console.warn('Firebase persistence failed: Multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        // The current browser doesn't support all of the features required to enable persistence
+        console.warn('Firebase persistence not supported by browser');
+      }
+    });
+  }
   
   // Configure Firestore settings for better connection handling
   // Uncomment the following line if you want to use the emulator for development

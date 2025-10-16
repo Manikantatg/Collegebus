@@ -36,6 +36,7 @@ export interface BusData {
   };
   lastLog?: BusLog;
   totalDistance?: number;
+  routeCompleted?: boolean; // Add this property to match Firebase structure
 }
 
 export interface EtaRequest {
