@@ -10,11 +10,14 @@ import DriverDashboard from './pages/DriverDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
+// Handle Netlify routing
+const basename = process.env.NODE_ENV === 'production' ? '/' : '/';
+
 function App() {
   return (
     <AuthProvider>
       <BusProvider>
-        <Router>
+        <Router basename={basename}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/driver-login" element={<DriverLogin />} />
@@ -36,6 +39,8 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            {/* Catch all route for Netlify */}
+            <Route path="*" element={<Home />} />
           </Routes>
         </Router>
       </BusProvider>
