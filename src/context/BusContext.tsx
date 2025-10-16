@@ -93,29 +93,47 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const unsubscribe = onSnapshot(collection(db as Firestore, 'busStates'), 
       (snapshot) => {
         try {
+          let hasUpdates = false;
+          const updatedBuses: Record<number, Partial<BusData>> = {};
+          
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'modified' || change.type === 'added') {
               const busState = change.doc.data() as BusState;
               const busId = busState.id;
               
               if (buses[busId]) {
-                // Update only the state, keep the hardcoded route
-                setBuses(prev => ({
-                  ...prev,
-                  [busId]: {
-                    ...prev[busId],
-                    currentStopIndex: busState.currentStopIndex,
-                    eta: busState.eta,
-                    route: prev[busId].route.map((stop, index) => ({
-                      ...stop,
-                      completed: index < busState.currentStopIndex
-                    })),
-                    routeCompleted: busState.routeCompleted
-                  }
-                }));
+                // Prepare update for this bus
+                updatedBuses[busId] = {
+                  currentStopIndex: busState.currentStopIndex,
+                  eta: busState.eta,
+                  route: buses[busId].route.map((stop, index) => ({
+                    ...stop,
+                    completed: index < busState.currentStopIndex
+                  })),
+                  routeCompleted: busState.routeCompleted
+                };
+                hasUpdates = true;
               }
             }
           });
+          
+          // Apply all updates at once
+          if (hasUpdates) {
+            setBuses(prev => {
+              const newBuses = { ...prev };
+              Object.keys(updatedBuses).forEach(busIdStr => {
+                const busId = parseInt(busIdStr);
+                const updates = updatedBuses[busId];
+                if (newBuses[busId] && updates) {
+                  newBuses[busId] = {
+                    ...newBuses[busId],
+                    ...updates
+                  } as BusData;
+                }
+              });
+              return newBuses;
+            });
+          }
           
           setFirebaseConnected(true);
           setFirebaseError(null);
@@ -179,7 +197,10 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const busRef = doc(db as Firestore, 'busStates', busId.toString());
-      await updateDoc(busRef, updates);
+      await updateDoc(busRef, {
+        ...updates,
+        lastUpdated: new Date().toISOString()
+      });
       setFirebaseError(null);
     } catch (error: any) {
       console.error(`Error updating bus state ${busId}:`, error);
@@ -306,8 +327,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateBusStateInFirebase(busId, {
         currentStopIndex: bus.currentStopIndex + 1,
         eta: null,
-        routeCompleted: bus.currentStopIndex + 1 >= bus.route.length,
-        lastUpdated: new Date().toISOString()
+        routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
       });
 
       toast.success('Moved to next stop');
@@ -373,8 +393,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateBusStateInFirebase(busId, {
         currentStopIndex: previousStopIndex,
         eta: null,
-        routeCompleted: false,
-        lastUpdated: new Date().toISOString()
+        routeCompleted: false
       });
 
       toast.success('Returned to previous stop');
@@ -448,8 +467,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state
       await updateBusStateInFirebase(busId, {
-        eta: minutes,
-        lastUpdated: new Date().toISOString()
+        eta: minutes
       });
 
       toast.success('ETA set successfully');
@@ -526,8 +544,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateBusStateInFirebase(busId, {
         currentStopIndex: 0,
         eta: null,
-        routeCompleted: false,
-        lastUpdated: new Date().toISOString()
+        routeCompleted: false
       });
 
       toast.success('Route reset successfully');
