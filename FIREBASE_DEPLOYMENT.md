@@ -15,9 +15,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
-    // Deny access to all other collections
+    // Allow read access to other collections for public
+    // but restrict write access
     match /{document=**} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if false;
     }
   }
 }
@@ -63,9 +65,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // Deny access to all other collections
+    // Allow read access to other collections for authenticated users
+    // but restrict write access
     match /{document=**} {
-      allow read, write: if false;
+      allow read: if request.auth != null;
+      allow write: if false;
     }
   }
 }

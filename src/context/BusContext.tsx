@@ -59,6 +59,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionRetryCount = useRef(0);
+  const updateQueueRef = useRef<Record<number, Partial<BusState>>>({});
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize buses with hardcoded routes
   useEffect(() => {
@@ -96,6 +98,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
+      }
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
     };
   }, []);
@@ -224,6 +229,10 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+        updateTimeoutRef.current = null;
+      }
     };
   }, [buses, db]);
 
@@ -262,6 +271,32 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initializeBusStates();
   }, [buses, db]);
 
+  // Batch update function to reduce the number of Firebase requests
+  const batchUpdateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
+    // Queue the updates
+    updateQueueRef.current[busId] = {
+      ...updateQueueRef.current[busId],
+      ...updates
+    };
+    
+    // Clear any existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+    
+    // Schedule the update to happen after a short delay to batch multiple updates
+    updateTimeoutRef.current = setTimeout(async () => {
+      // Process all queued updates
+      const updatesToProcess = { ...updateQueueRef.current };
+      updateQueueRef.current = {};
+      
+      // Send updates to Firebase
+      for (const [id, update] of Object.entries(updatesToProcess)) {
+        await updateBusStateInFirebase(parseInt(id), update);
+      }
+    }, 100); // Batch updates every 100ms
+  };
+
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
@@ -294,6 +329,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // If it's a permission error, show a more user-friendly message
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please check your credentials.');
+      } else if (error.code === 'resource-exhausted') {
+        toast.error('Too many requests. Please wait before trying again.');
       }
     }
   };
@@ -414,8 +451,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state
-      await updateBusStateInFirebase(busId, {
+      // Update Firebase state with batching
+      await batchUpdateBusStateInFirebase(busId, {
         currentStopIndex: bus.currentStopIndex + 1,
         eta: null,
         routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
@@ -481,8 +518,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state
-      await updateBusStateInFirebase(busId, {
+      // Update Firebase state with batching
+      await batchUpdateBusStateInFirebase(busId, {
         currentStopIndex: previousStopIndex,
         eta: null,
         routeCompleted: false
@@ -557,8 +594,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state
-      await updateBusStateInFirebase(busId, {
+      // Update Firebase state with batching
+      await batchUpdateBusStateInFirebase(busId, {
         eta: minutes
       });
 
@@ -633,8 +670,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state
-      await updateBusStateInFirebase(busId, {
+      // Update Firebase state with batching
+      await batchUpdateBusStateInFirebase(busId, {
         currentStopIndex: 0,
         eta: null,
         routeCompleted: false
