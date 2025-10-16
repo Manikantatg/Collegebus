@@ -4,9 +4,12 @@ import {
   signInWithPopup,
   signOut, 
   onAuthStateChanged,
-  User 
+  User,
+  Auth,
+  GoogleAuthProvider
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { handleFirebaseError } from '../utils/firebaseErrorHandler';
+import { auth as firebaseAuth, googleProvider as firebaseGoogleProvider } from '../firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,9 +33,16 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (!firebaseAuth) {
+      console.error("Firebase auth is not initialized");
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (user) => {
       setUser(user);
       setLoading(false);
     });
@@ -40,29 +51,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
+    setAuthError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
+      if (!firebaseAuth) {
+        throw new Error("Firebase auth is not initialized");
+      }
+      await signInWithEmailAndPassword(firebaseAuth, email, password);
+    } catch (error: any) {
       console.error('Login failed:', error);
-      throw error;
+      const errorMessage = handleFirebaseError(error);
+      setAuthError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const loginWithGoogle = async () => {
+    setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+      if (!firebaseAuth || !firebaseGoogleProvider) {
+        throw new Error("Firebase auth or Google provider is not initialized");
+      }
+      await signInWithPopup(firebaseAuth, firebaseGoogleProvider);
+    } catch (error: any) {
       console.error('Google login failed:', error);
-      throw error;
+      const errorMessage = handleFirebaseError(error);
+      setAuthError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      if (!firebaseAuth) {
+        throw new Error("Firebase auth is not initialized");
+      }
+      await signOut(firebaseAuth);
+    } catch (error: any) {
+      console.error('Logout failed:', error);
+      const errorMessage = handleFirebaseError(error);
+      setAuthError(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithGoogle, logout, authError }}>
       {!loading && children}
     </AuthContext.Provider>
   );

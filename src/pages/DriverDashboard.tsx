@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LogOut, Play, Store as Stop } from 'lucide-react';
+import { ArrowLeft, LogOut, Play, Store as Stop, Wifi, WifiOff } from 'lucide-react';
 import RouteDisplay from '../components/RouteDisplay';
 import DriverActions from '../components/DriverActions';
 import EtaRequests from '../components/EtaRequests';
@@ -150,29 +150,26 @@ const DriverDashboard: React.FC = () => {
       </header>
       
       <main className="container mx-auto px-4 py-6">
+        {/* Connection Status */}
+        <div className={`mb-4 flex items-center p-3 rounded-lg ${
+          buses && Object.keys(buses).length > 0 ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+        }`}>
+          {buses && Object.keys(buses).length > 0 ? (
+            <>
+              <Wifi size={18} className="mr-2" />
+              <span>Connected to data system</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={18} className="mr-2" />
+              <span>Data connection failed</span>
+            </>
+          )}
+        </div>
+
         {locationError && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
             {locationError}
-          </div>
-        )}
-
-        {locationData && isTracking && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h3 className="font-medium text-green-800 mb-2">Current Location</h3>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-green-600">Latitude</p>
-                <p className="font-mono">{locationData.lat.toFixed(6)}</p>
-              </div>
-              <div>
-                <p className="text-green-600">Longitude</p>
-                <p className="font-mono">{locationData.lng.toFixed(6)}</p>
-              </div>
-              <div>
-                <p className="text-green-600">Speed</p>
-                <p className="font-mono">{locationData.speed ? `${(locationData.speed * 3.6).toFixed(1)} km/h` : 'N/A'}</p>
-              </div>
-            </div>
           </div>
         )}
 

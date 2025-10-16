@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, PhoneCall, RefreshCw, Clock } from 'lucide-react';
+import { ArrowLeft, PhoneCall, RefreshCw, Clock, Wifi, WifiOff } from 'lucide-react';
 import BusSelector from '../components/BusSelector';
 import RouteDisplay from '../components/RouteDisplay';
 import { useBus } from '../context/BusContext';
@@ -66,6 +66,23 @@ const StudentDashboard: React.FC = () => {
       </header>
       
       <main className="container mx-auto px-4 py-6 max-w-xl">
+        {/* Connection Status */}
+        <div className={`mb-4 flex items-center p-3 rounded-lg ${
+          buses && Object.keys(buses).length > 0 ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200'
+        }`}>
+          {buses && Object.keys(buses).length > 0 ? (
+            <>
+              <Wifi size={18} className="mr-2" />
+              <span>Connected to data system</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={18} className="mr-2" />
+              <span>Data connection failed</span>
+            </>
+          )}
+        </div>
+
         {/* Notification */}
         <AnimatePresence>
           {showNotification && (
