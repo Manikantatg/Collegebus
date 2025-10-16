@@ -163,33 +163,60 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Real-time listener for individual bus updates
+  useEffect(() => {
+    if (!db) return;
+
+    const unsubscribeFunctions: (() => void)[] = [];
+    
+    // Create a listener for each bus
+    Object.keys(buses).forEach(busIdStr => {
+      const busId = parseInt(busIdStr);
+      const busDocRef = doc(db as Firestore, 'buses', busId.toString());
+      
+      const unsubscribe = onSnapshot(busDocRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          setBuses(prevBuses => ({
+            ...prevBuses,
+            [busId]: {
+              ...data,
+              id: data.id,
+              currentStopIndex: data.currentStopIndex || 0,
+              eta: data.eta || null,
+              route: data.route || [],
+              etaRequests: data.etaRequests || [],
+              notifications: data.notifications || []
+            } as BusData
+          }));
+        }
+      }, (error) => {
+        console.error(`Error listening to bus ${busId} updates:`, error);
+      });
+      
+      unsubscribeFunctions.push(unsubscribe);
+    });
+
+    // Cleanup all listeners on unmount
+    return () => {
+      unsubscribeFunctions.forEach(unsub => unsub());
+    };
+  }, [buses, db]);
+
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
 
-  // Update Firebase when buses change
-  useEffect(() => {
+  const updateBusInFirebase = async (busId: number, updates: Partial<BusData>) => {
     if (!db || !firebaseConnected) return;
 
-    const updateFirebase = async () => {
-      try {
-        Object.values(buses).forEach(async (bus) => {
-          try {
-            const busRef = doc(db as Firestore, 'buses', bus.id.toString());
-            await updateDoc(busRef, {
-              ...bus
-            });
-          } catch (error) {
-            console.error(`Error updating bus ${bus.id} in Firebase:`, error);
-          }
-        });
-      } catch (error) {
-        console.error("Error updating Firebase:", error);
-      }
-    };
-
-    updateFirebase();
-  }, [buses, firebaseConnected]);
+    try {
+      const busRef = doc(db as Firestore, 'buses', busId.toString());
+      await updateDoc(busRef, updates);
+    } catch (error) {
+      console.error(`Error updating bus ${busId} in Firebase:`, error);
+    }
+  };
 
   const logDriverAttendance = async (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number }) => {
     try {
@@ -198,7 +225,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const formattedTime = formatTime(new Date());
       
-      // Update local state instead of database
+      // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
         if (updatedBuses[busId]) {
@@ -235,6 +262,21 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedBuses[busId].notifications.unshift(newNotification);
         }
         return updatedBuses;
+      });
+
+      // Update Firebase
+      await updateBusInFirebase(busId, {
+        currentDriver: type === 'entry' ? {
+          uid: driver.email,
+          email: driver.email,
+          name: driver.name
+        } : undefined,
+        currentLocation: type === 'entry' ? {
+          lat: location.lat,
+          lng: location.lng,
+          timestamp: new Date().toISOString(),
+          speed: 0
+        } : undefined
       });
 
       toast.success(`Driver ${type} logged successfully`);
@@ -281,6 +323,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedBuses[busId].notifications.unshift(newNotification);
         }
         return updatedBuses;
+      });
+
+      // Update Firebase
+      await updateBusInFirebase(busId, {
+        currentStopIndex: bus.currentStopIndex + 1,
+        eta: null,
+        route: bus.route.map((stop, index) => 
+          index === bus.currentStopIndex 
+            ? { ...stop, completed: true, actualTime: formattedTime } 
+            : stop
+        )
       });
 
       toast.success('Moved to next stop');
@@ -330,6 +383,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
+      // Update Firebase
+      await updateBusInFirebase(busId, {
+        currentStopIndex: previousStopIndex,
+        eta: null,
+        route: bus.route.map((stop, index) => 
+          index === previousStopIndex 
+            ? { ...stop, completed: false, actualTime: undefined } 
+            : stop
+        )
+      });
+
       toast.success('Returned to previous stop');
     } catch (error) {
       console.error('Error moving to previous stop:', error);
@@ -376,6 +440,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
+      // Update Firebase
+      await updateBusInFirebase(busId, {
+        eta: minutes
+      });
+
       toast.success('ETA set successfully');
     } catch (error) {
       console.error('Error setting ETA:', error);
@@ -401,6 +470,14 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         return updatedBuses;
       });
+
+      // Update Firebase
+      const bus = buses[busId];
+      if (bus) {
+        await updateBusInFirebase(busId, {
+          notifications: bus.notifications
+        });
+      }
 
       toast.success('Stop request sent to driver');
     } catch (error) {
@@ -433,6 +510,22 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
+      // Update Firebase
+      const bus = buses[busId];
+      if (bus) {
+        await updateBusInFirebase(busId, {
+          currentStopIndex: 0,
+          eta: null,
+          route: bus.route.map(stop => ({
+            ...stop,
+            completed: false,
+            actualTime: undefined
+          })),
+          etaRequests: [],
+          notifications: []
+        });
+      }
+
       toast.success('Route reset successfully');
     } catch (error) {
       console.error('Error resetting bus progress:', error);
@@ -458,6 +551,14 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           };
         });
         return updatedBuses;
+      });
+
+      // Update Firebase for all buses
+      Object.values(buses).forEach(async (bus) => {
+        await updateBusInFirebase(bus.id, {
+          currentStopIndex: 0,
+          route: [...bus.route].reverse()
+        });
       });
 
       toast.success('All routes reversed');

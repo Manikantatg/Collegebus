@@ -17,7 +17,9 @@ const StudentDashboard: React.FC = () => {
     if (!selectedBus) return;
     
     const bus = buses[selectedBus];
-    const latestNotification = bus?.notifications?.[bus.notifications.length - 1];
+    if (!bus) return;
+    
+    const latestNotification = bus.notifications?.[0]; // Get the most recent notification
     
     if (latestNotification) {
       setShowNotification(latestNotification.message);
