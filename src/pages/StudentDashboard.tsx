@@ -30,11 +30,16 @@ const StudentDashboard: React.FC = () => {
       
       return () => clearTimeout(timer);
     }
-  }, [buses, selectedBus]);
+  }, [buses, selectedBus]); // This dependency array is correct for real-time updates
   
-  // Selected bus data
+  // Add a more efficient re-render trigger for route updates
   const busData = selectedBus ? buses[selectedBus] : null;
   const driverData = selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
+  
+  // Create a unique key for the RouteDisplay component to force re-render on updates
+  const routeDisplayKey = selectedBus && busData 
+    ? `${selectedBus}-${busData.currentStopIndex}-${busData.eta}-${busData.routeCompleted}` 
+    : 'no-bus';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
@@ -128,7 +133,7 @@ const StudentDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="card mb-4"
-                key={`${selectedBus}-${busData.currentStopIndex}-${busData.eta}`}
+                key={routeDisplayKey} // Use the optimized key for better re-rendering
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Bus Route</h2>
@@ -182,6 +187,9 @@ const StudentDashboard: React.FC = () => {
                   <div>
                     <p className="font-semibold">{driverData.name}</p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">{driverData.phone}</p>
+                    {busData?.currentDriver && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">🟢 Driver is on duty</p>
+                    )}
                   </div>
                   <button
                     className="btn btn-outline py-2 text-sm"

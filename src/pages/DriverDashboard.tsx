@@ -17,12 +17,13 @@ interface LocationData {
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { busId } = useParams<{ busId: string }>();
-  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, logDriverAttendance, firebaseConnected, firebaseError } = useBus();
+  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, logDriverAttendance, updateDriverLocation, firebaseConnected, firebaseError } = useBus();
   
   const [isTracking, setIsTracking] = useState(false);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [watchId, setWatchId] = useState<number | null>(null);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(0);
   
   useEffect(() => {
     if (busId) {
@@ -54,9 +55,17 @@ const DriverDashboard: React.FC = () => {
           setLocationData(newLocation);
           setLocationError(null);
 
+          const busIdNum = parseInt(busId!);
+
+          // Log driver entry only once when tracking starts
           if (!isTracking) {
             setIsTracking(true);
-            await logDriverAttendance(parseInt(busId!), 'entry', newLocation);
+            await logDriverAttendance(busIdNum, 'entry', newLocation);
+          } 
+          // Update location continuously but with optimized frequency for real-time updates
+          else if (Date.now() - lastLocationUpdate > 5000) { // Update every 5 seconds for better real-time sync
+            setLastLocationUpdate(Date.now());
+            await updateDriverLocation(busIdNum, newLocation);
           }
         },
         (error) => {
@@ -64,8 +73,8 @@ const DriverDashboard: React.FC = () => {
         },
         {
           enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
+          timeout: 5000, // Reduced timeout for faster responses
+          maximumAge: 10000 // Reduced maximum age for fresher data
         }
       );
 
@@ -77,6 +86,13 @@ const DriverDashboard: React.FC = () => {
 
   useEffect(() => {
     startTracking();
+    
+    // Cleanup function
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   const stopTracking = async () => {

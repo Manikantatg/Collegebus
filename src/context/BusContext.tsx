@@ -9,7 +9,7 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { BusData, BusStop, EtaRequest, Notification } from '../types';
+import { BusData, BusStop, EtaRequest, Notification, Location } from '../types';
 import { busRoutes, drivers } from '../data/busRoutes';
 import { formatTime } from '../utils/geofence';
 import { toast } from 'react-hot-toast';
@@ -21,6 +21,17 @@ interface BusState {
   eta: number | null;
   routeCompleted: boolean;
   lastUpdated: string;
+  currentLocation?: {
+    lat: number;
+    lng: number;
+    timestamp: string;
+    speed: number | null;
+  };
+  currentDriver?: {
+    uid: string;
+    email: string;
+    name: string;
+  };
 }
 
 interface BusContextType {
@@ -33,7 +44,8 @@ interface BusContextType {
   resetBusProgress: (busId: number) => void;
   getFormattedTime: () => string;
   requestStop: (busId: number) => void;
-  logDriverAttendance: (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number }) => Promise<void>;
+  logDriverAttendance: (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number; speed: number | null }) => Promise<void>;
+  updateDriverLocation: (busId: number, location: { lat: number; lng: number; speed: number | null }) => void;
   reverseRoute: () => void;
   loading: boolean;
   firebaseConnected: boolean;
@@ -59,10 +71,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionRetryCount = useRef(0);
-  const updateQueueRef = useRef<Record<number, Partial<BusState>>>({});
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitializedRef = useRef(false);
   
-  // Initialize buses with hardcoded routes
+  // Initialize buses with hardcoded routes - RUN ONLY ONCE
   useEffect(() => {
     const initializeBuses = () => {
       const busesMap: Record<number, BusData> = {};
@@ -99,13 +110,10 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
     };
   }, []);
 
-  // Firebase listener for bus states only (with better error handling)
+  // Firebase listener for bus states only (with better error handling and real-time optimization)
   useEffect(() => {
     if (!db) return;
 
@@ -122,7 +130,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           collection(db as Firestore, 'busStates'),
           {
             // Include metadata changes to better handle connection state
-            includeMetadataChanges: false // Set to false to reduce overhead
+            includeMetadataChanges: true // Enable for better real-time detection
           },
           (snapshot) => {
             try {
@@ -135,18 +143,37 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   const busState = change.doc.data() as BusState;
                   const busId = busState.id;
                   
-                  if (buses[busId]) {
+                  // Get the initial route from our local buses state
+                  const localBus = buses[busId];
+                  if (localBus) {
                     console.log('Processing update for bus', busId, 'with stop index', busState.currentStopIndex);
                     // Prepare update for this bus
-                    updatedBuses[busId] = {
+                    const updates: Partial<BusData> = {
                       currentStopIndex: busState.currentStopIndex,
                       eta: busState.eta,
-                      route: buses[busId].route.map((stop, index) => ({
+                      route: localBus.route.map((stop, index) => ({
                         ...stop,
                         completed: index < busState.currentStopIndex
                       })),
-                      routeCompleted: busState.routeCompleted
+                      routeCompleted: busState.routeCompleted || false
                     };
+                    
+                    // Add driver information if available
+                    if (busState.currentDriver) {
+                      updates.currentDriver = busState.currentDriver;
+                    }
+                    
+                    // Add location information if available
+                    if (busState.currentLocation) {
+                      updates.currentLocation = {
+                        lat: busState.currentLocation.lat,
+                        lng: busState.currentLocation.lng,
+                        timestamp: busState.currentLocation.timestamp,
+                        speed: busState.currentLocation.speed || 0
+                      };
+                    }
+                    
+                    updatedBuses[busId] = updates;
                     hasUpdates = true;
                   }
                 }
@@ -229,16 +256,12 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = null;
-      }
     };
-  }, [buses, db]);
+  }, [db]); // Remove buses dependency to prevent re-subscription
 
-  // Initialize bus states in Firebase (with better error handling)
+  // Initialize bus states in Firebase (with better error handling) - RUN ONLY ONCE
   useEffect(() => {
-    if (!db || Object.keys(buses).length === 0) return;
+    if (!db || Object.keys(buses).length === 0 || isInitializedRef.current) return;
 
     const initializeBusStates = async () => {
       try {
@@ -262,6 +285,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.log('Bus states initialized successfully');
         setFirebaseConnected(true);
         setFirebaseError(null);
+        isInitializedRef.current = true; // Mark as initialized
       } catch (error: any) {
         console.error('Error initializing bus states:', error);
         setFirebaseError(`Initialization Error: ${error.message || 'Failed to initialize bus states'}`);
@@ -271,37 +295,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     initializeBusStates();
   }, [buses, db]);
 
-  // Batch update function to reduce the number of Firebase requests
-  const batchUpdateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
-    // Queue the updates
-    updateQueueRef.current[busId] = {
-      ...updateQueueRef.current[busId],
-      ...updates
-    };
-    
-    // Clear any existing timeout
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-    
-    // Schedule the update to happen after a short delay to batch multiple updates
-    updateTimeoutRef.current = setTimeout(async () => {
-      // Process all queued updates
-      const updatesToProcess = { ...updateQueueRef.current };
-      updateQueueRef.current = {};
-      
-      // Send updates to Firebase
-      for (const [id, update] of Object.entries(updatesToProcess)) {
-        await updateBusStateInFirebase(parseInt(id), update);
-      }
-    }, 100); // Batch updates every 100ms
-  };
-
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
 
-  // Update bus state in Firebase
+  // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES
   const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
     if (!db || !firebaseConnected) {
       console.warn('Firebase not connected, skipping update for bus', busId);
@@ -316,10 +314,13 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       console.log('Updating Firebase state for bus', busId, 'with updates:', updates);
       const busRef = doc(db as Firestore, 'busStates', busId.toString());
-      await updateDoc(busRef, {
+      
+      // Use setDoc with merge for faster updates and to avoid conflicts
+      await setDoc(busRef, {
         ...updates,
         lastUpdated: new Date().toISOString()
-      });
+      }, { merge: true });
+      
       setFirebaseError(null);
       console.log('Firebase update successful for bus', busId);
     } catch (error: any) {
@@ -335,7 +336,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const logDriverAttendance = async (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number }) => {
+  const logDriverAttendance = async (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number; speed: number | null }) => {
     try {
       const driver = drivers.find(d => d.bus === busId);
       if (!driver) return;
@@ -358,7 +359,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 lat: location.lat,
                 lng: location.lng,
                 timestamp: new Date().toISOString(),
-                speed: 0
+                speed: location.speed || 0
               }
             };
           } else {
@@ -392,11 +393,68 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
+      // Update Firebase with driver attendance - IMMEDIATE UPDATE
+      if (type === 'entry') {
+        await updateBusStateInFirebase(busId, {
+          currentDriver: {
+            uid: driver.email,
+            email: driver.email,
+            name: driver.name
+          },
+          currentLocation: {
+            lat: location.lat,
+            lng: location.lng,
+            timestamp: new Date().toISOString(),
+            speed: location.speed || 0
+          }
+        });
+      } else {
+        await updateBusStateInFirebase(busId, {
+          currentDriver: undefined,
+          currentLocation: undefined
+        });
+      }
+
       toast.success(`Driver ${type} logged successfully`);
     } catch (error: any) {
       console.error('Error logging driver attendance:', error);
       setFirebaseError(`Attendance Error: ${error.message || 'Failed to log attendance'}`);
       toast.error('Failed to log attendance');
+    }
+  };
+
+  // Update driver location continuously
+  const updateDriverLocation = async (busId: number, location: { lat: number; lng: number; speed: number | null }) => {
+    try {
+      // Update local state
+      setBuses(prev => {
+        const updatedBuses = { ...prev };
+        if (updatedBuses[busId]) {
+          updatedBuses[busId] = {
+            ...updatedBuses[busId],
+            currentLocation: {
+              lat: location.lat,
+              lng: location.lng,
+              timestamp: new Date().toISOString(),
+              speed: location.speed || 0
+            }
+          };
+        }
+        return updatedBuses;
+      });
+
+      // Update Firebase with new location - IMMEDIATE UPDATE
+      await updateBusStateInFirebase(busId, {
+        currentLocation: {
+          lat: location.lat,
+          lng: location.lng,
+          timestamp: new Date().toISOString(),
+          speed: location.speed || 0
+        }
+      });
+    } catch (error: any) {
+      console.error('Error updating driver location:', error);
+      setFirebaseError(`Location Error: ${error.message || 'Failed to update location'}`);
     }
   };
 
@@ -451,8 +509,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state with batching
-      await batchUpdateBusStateInFirebase(busId, {
+      // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
+      await updateBusStateInFirebase(busId, {
         currentStopIndex: bus.currentStopIndex + 1,
         eta: null,
         routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
@@ -518,8 +576,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state with batching
-      await batchUpdateBusStateInFirebase(busId, {
+      // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
+      await updateBusStateInFirebase(busId, {
         currentStopIndex: previousStopIndex,
         eta: null,
         routeCompleted: false
@@ -594,8 +652,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state with batching
-      await batchUpdateBusStateInFirebase(busId, {
+      // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
+      await updateBusStateInFirebase(busId, {
         eta: minutes
       });
 
@@ -670,8 +728,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return updatedBuses;
       });
 
-      // Update Firebase state with batching
-      await batchUpdateBusStateInFirebase(busId, {
+      // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
+      await updateBusStateInFirebase(busId, {
         currentStopIndex: 0,
         eta: null,
         routeCompleted: false
@@ -727,6 +785,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getFormattedTime,
         requestStop,
         logDriverAttendance,
+        updateDriverLocation,
         reverseRoute,
         loading,
         firebaseConnected,

@@ -1,5 +1,5 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, Firestore, connectFirestoreEmulator, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
 
 // Firebase configuration
@@ -20,10 +20,14 @@ let googleProvider: GoogleAuthProvider | null = null;
 
 try {
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
   
-  // Configure Firestore settings for better connection handling
-  // Using modern cache settings instead of deprecated enableIndexedDbPersistence
+  // Initialize Firestore with optimized settings for real-time updates
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    ignoreUndefinedProperties: true,
+  });
+  
+  // Configure Firestore settings for better real-time connection handling
   // Uncomment the following line if you want to use the emulator for development
   // connectFirestoreEmulator(db, 'localhost', 8080);
   
