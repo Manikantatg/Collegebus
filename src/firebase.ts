@@ -2,14 +2,14 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore, connectFirestoreEmulator, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
 
-// Firebase configuration
+// Firebase configuration using environment variables for security
 const firebaseConfig = {
-  apiKey: "AIzaSyCGvaYH_zL-vefP4Bm83MdDn9DXAlCDiGk",
-  authDomain: "bus-tracking-7706d.firebaseapp.com",
-  projectId: "bus-tracking-7706d",
-  storageBucket: "bus-tracking-7706d.firebasestorage.app",
-  messagingSenderId: "217343122092",
-  appId: "1:217343122092:web:15338fb293406602689d09"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCGvaYH_zL-vefP4Bm83MdDn9DXAlCDiGk",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "bus-tracking-7706d.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "bus-tracking-7706d",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "bus-tracking-7706d.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "217343122092",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:217343122092:web:15338fb293406602689d09"
 };
 
 // Initialize Firebase with proper types and error handling
