@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Rules Test</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <h1>Firebase Rules Test</h1>
+    <div id="status">Testing Firebase connection and rules...</div>
+    <div id="results"></div>
+    <button id="testBtn">Test Rules</button>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyCGvaYH_zL-vefP4Bm83MdDn9DXAlCDiGk",
+          authDomain: "bus-tracking-7706d.firebaseapp.com",
+          projectId: "bus-tracking-7706d",
+          storageBucket: "bus-tracking-7706d.firebasestorage.app",
+          messagingSenderId: "217343122092",
+          appId: "1:217343122092:web:15338fb293406602689d09"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Test Firebase connection and rules
+        async function testRules() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                statusDiv.innerHTML = 'Testing Firebase rules...';
+                
+                // Test reading from busStates collection
+                const snapshot = await db.collection('busStates').limit(1).get();
+                statusDiv.innerHTML = 'Read permission: OK';
+                
+                // Test writing to busStates collection
+                const testDoc = await db.collection('busStates').doc('test-doc').set({
+                    test: true,
+                    timestamp: new Date().toISOString()
+                });
+                statusDiv.innerHTML = 'Read/Write permissions: OK';
+                
+                resultsDiv.innerHTML = `
+                    <h2>Rules Test Results:</h2>
+                    <p>✅ Read permission granted</p>
+                    <p>✅ Write permission granted</p>
+                    <p>✅ Firebase rules are working correctly</p>
+                `;
+            } catch (error) {
+                console.error('Firebase rules test error:', error);
+                statusDiv.innerHTML = `Error: ${error.message || error}`;
+                
+                resultsDiv.innerHTML = `
+                    <h2>Rules Test Results:</h2>
+                    <p>❌ Permission error detected</p>
+                    <p>Error: ${error.message || 'Unknown error'}</p>
+                    <h3>Solution:</h3>
+                    <ol>
+                        <li>Deploy updated Firestore rules</li>
+                        <li>Check Firebase project settings</li>
+                        <li>Verify API key permissions</li>
+                    </ol>
+                `;
+            }
+        }
+
+        // Run the test when button is clicked
+        document.getElementById('testBtn').addEventListener('click', testRules);
+        
+        // Run the test automatically on page load
+        window.addEventListener('DOMContentLoaded', testRules);
+    </script>
+</body>
+</html>

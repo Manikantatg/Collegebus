@@ -217,6 +217,12 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
             setFirebaseConnected(false);
             
+            // Provide more specific error handling for permissions issues
+            if (error.code === 'permission-denied') {
+              setFirebaseError('Permission Error: Please check Firebase security rules');
+              console.error('Firebase permission denied. Check security rules.');
+            }
+            
             // Implement exponential backoff for reconnection
             if (connectionRetryCount.current < 5) { // Limit retries to prevent infinite loop
               connectionRetryCount.current += 1;

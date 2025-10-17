@@ -1,48 +1,62 @@
 import React, { useEffect, useState } from 'react';
-import { db, auth } from '../firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const FirebaseTest: React.FC = () => {
-  const [connectionStatus, setConnectionStatus] = useState<string>('Checking...');
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const [testData, setTestData] = useState<any[]>([]);
 
   useEffect(() => {
-    const testFirebaseConnection = async () => {
+    const testFirebase = async () => {
       try {
-        if (!db) {
-          setConnectionStatus('Firebase not initialized');
-          return;
-        }
-
-        // Test Firestore connection
-        const testCollection = collection(db, 'test');
-        await getDocs(testCollection);
-        setConnectionStatus('Firebase connected successfully');
-      } catch (err: any) {
-        console.error('Firebase connection test failed:', err);
-        setConnectionStatus('Firebase connection failed');
-        setError(err.message || 'Unknown error');
+        setStatus('Testing Firebase connection...');
+        
+        // Test writing data
+        const docRef = await addDoc(collection(db as any, 'test'), {
+          message: 'Test data from FirebaseTest component',
+          timestamp: new Date().toISOString()
+        });
+        
+        setStatus(`Successfully wrote test document with ID: ${docRef.id}`);
+        
+        // Test reading data
+        const querySnapshot = await getDocs(collection(db as any, 'test'));
+        const data: any[] = [];
+        querySnapshot.forEach((doc) => {
+          data.push({ id: doc.id, ...doc.data() });
+        });
+        
+        setTestData(data);
+        setStatus(`Successfully read ${data.length} documents from test collection`);
+      } catch (error) {
+        console.error('Firebase test error:', error);
+        setStatus(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     };
 
-    testFirebaseConnection();
+    if (db) {
+      testFirebase();
+    } else {
+      setStatus('Firebase not initialized');
+    }
   }, []);
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-2">Firebase Connection Test</h2>
-      <div className={`p-2 rounded ${connectionStatus === 'Firebase connected successfully' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-        Status: {connectionStatus}
-      </div>
-      {error && (
-        <div className="mt-2 p-2 bg-red-50 text-red-600 rounded">
-          Error: {error}
+    <div className="p-4 bg-yellow-100 rounded-lg">
+      <h2 className="text-lg font-bold mb-2">Firebase Connection Test</h2>
+      <p className="mb-2">Status: {status}</p>
+      {testData.length > 0 && (
+        <div>
+          <h3 className="font-medium">Test Data:</h3>
+          <ul className="list-disc pl-5">
+            {testData.map((item) => (
+              <li key={item.id}>
+                {item.message} - {item.timestamp}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-      <div className="mt-2 text-sm text-gray-600">
-        <p>Auth initialized: {auth ? 'Yes' : 'No'}</p>
-        <p>DB initialized: {db ? 'Yes' : 'No'}</p>
-      </div>
     </div>
   );
 };

@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Allow public read/write access for busStates collection only with optimized real-time access
     match /busStates/{busId} {
-      allow read, write: if true;
+      allow create, read, update, delete: if true;
       
       // Enable real-time listeners with optimized settings
       allow get, list: if true;
@@ -12,8 +12,8 @@ service cloud.firestore {
     // Allow read access to other collections for public
     // but restrict write access
     match /{document=**} {
-      allow read: if true;
-      allow write: if false;
+      allow get, list, read: if true;
+      allow write, create, update, delete: if false;
     }
   }
 }
