@@ -6,106 +6,20 @@ import RouteDisplay from '../components/RouteDisplay';
 import DriverActions from '../components/DriverActions';
 import EtaRequests from '../components/EtaRequests';
 import { useBus } from '../context/BusContext';
-
-interface LocationData {
-  lat: number;
-  lng: number;
-  speed: number | null;
-  timestamp: string;
-}
+import { toast } from 'react-hot-toast';
 
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { busId } = useParams<{ busId: string }>();
-  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, logDriverAttendance, updateDriverLocation, firebaseConnected, firebaseError } = useBus();
-  
-  const [isTracking, setIsTracking] = useState(false);
-  const [locationData, setLocationData] = useState<LocationData | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [watchId, setWatchId] = useState<number | null>(null);
-  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(0);
+  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, firebaseConnected, firebaseError } = useBus();
   
   useEffect(() => {
     if (busId) {
       setSelectedBus(parseInt(busId));
     }
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, [busId, setSelectedBus, watchId]);
-
-  const startTracking = async () => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      return;
-    }
-
-    try {
-      const id = navigator.geolocation.watchPosition(
-        async (position) => {
-          const newLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            speed: position.coords.speed,
-            timestamp: new Date().toISOString()
-          };
-
-          setLocationData(newLocation);
-          setLocationError(null);
-
-          const busIdNum = parseInt(busId!);
-
-          // Log driver entry only once when tracking starts
-          if (!isTracking) {
-            setIsTracking(true);
-            await logDriverAttendance(busIdNum, 'entry', newLocation);
-          } 
-          // Update location continuously but with optimized frequency for real-time updates
-          else if (Date.now() - lastLocationUpdate > 5000) { // Update every 5 seconds for better real-time sync
-            setLastLocationUpdate(Date.now());
-            await updateDriverLocation(busIdNum, newLocation);
-          }
-        },
-        (error) => {
-          setLocationError(`Error: ${error.message}`);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000, // Reduced timeout for faster responses
-          maximumAge: 10000 // Reduced maximum age for fresher data
-        }
-      );
-
-      setWatchId(id);
-    } catch (error) {
-      setLocationError(`Failed to start tracking: ${error}`);
-    }
-  };
-
-  useEffect(() => {
-    startTracking();
-    
-    // Cleanup function
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, []);
+  }, [busId, setSelectedBus]);
 
   const stopTracking = async () => {
-    if (watchId) {
-      navigator.geolocation.clearWatch(watchId);
-      setWatchId(null);
-    }
-    
-    if (locationData) {
-      await logDriverAttendance(parseInt(busId!), 'exit', locationData);
-    }
-    
-    setIsTracking(false);
     navigate('/driver-login');
   };
   
@@ -132,6 +46,13 @@ const DriverDashboard: React.FC = () => {
   
   const currentStopName = busData.route[busData.currentStopIndex]?.name || 'Route Completed';
   
+  // Watch for Firebase errors to show quota exceeded messages
+  useEffect(() => {
+    if (firebaseError && firebaseError.includes('Quota')) {
+      toast.error('Quota exceeded. Updates may be delayed. Please wait before making more changes.');
+    }
+  }, [firebaseError]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-100 dark:from-slate-900 dark:to-slate-800">
       <header className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
@@ -182,7 +103,7 @@ const DriverDashboard: React.FC = () => {
           ) : firebaseConnected ? (
             <>
               <Wifi size={18} className="mr-2" />
-              <span>Connected to data system</span>
+              <span>Connected to real-time data system</span>
             </>
           ) : (
             <>
@@ -191,12 +112,6 @@ const DriverDashboard: React.FC = () => {
             </>
           )}
         </div>
-
-        {locationError && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            {locationError}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           <div className="lg:col-span-2">

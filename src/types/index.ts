@@ -5,20 +5,12 @@ export interface BusStop {
   completed: boolean;
 }
 
-export interface Location {
-  lat: number;
-  lng: number;
-  timestamp: string;
-  speed: number;
-}
-
 export interface BusLog {
   busId: number;
   driverId: string;
   driverEmail: string;
   timestamp: string;
   type: 'entry' | 'exit';
-  location: Location;
 }
 
 export interface BusData {
@@ -28,12 +20,6 @@ export interface BusData {
   route: BusStop[];
   etaRequests: EtaRequest[];
   notifications: Notification[];
-  currentLocation?: Location;
-  currentDriver?: {
-    uid: string;
-    email: string;
-    name: string;
-  };
   lastLog?: BusLog;
   totalDistance?: number;
   routeCompleted?: boolean; // Add this property to match Firebase structure
@@ -47,7 +33,7 @@ export interface EtaRequest {
 }
 
 export interface Notification {
-  type: 'eta' | 'update' | 'request' | 'geofence';
+  type: 'eta' | 'update' | 'request';
   message: string;
   timestamp: string;
 }

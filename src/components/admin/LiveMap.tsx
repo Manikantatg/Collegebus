@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
 import { useBus } from '../../context/BusContext';
@@ -65,7 +65,7 @@ const LiveMap: React.FC = () => {
                   <div>
                     <h3 className="font-medium text-slate-800 dark:text-white">Bus {bus.id}</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-300">
-                      {bus.route[bus.currentStopIndex]?.name || 'Unknown location'}
+                      {bus.route[bus.currentStopIndex]?.name || 'Route Started'}
                     </p>
                   </div>
                   <MapPin size={20} className="text-blue-500" />
@@ -80,10 +80,10 @@ const LiveMap: React.FC = () => {
           </div>
         </div>
 
-        {/* Map Visualization */}
+        {/* Route Visualization */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">
-            {selectedBus ? `Bus ${selectedBus.id} Route` : 'Route Map'}
+            {selectedBus ? `Bus ${selectedBus.id} Route` : 'Route Visualization'}
           </h2>
           <div className="bg-slate-100 dark:bg-slate-700 rounded-lg h-96 flex items-center justify-center">
             {selectedBus ? (

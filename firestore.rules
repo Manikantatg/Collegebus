@@ -7,6 +7,9 @@ service cloud.firestore {
       
       // Enable real-time listeners with optimized settings
       allow get, list: if true;
+      
+      // Limit document size to reduce bandwidth usage
+      allow write: if request.resource.size < 1024; // 1KB limit
     }
     
     // Allow read access to other collections for public

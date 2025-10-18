@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusStop } from '../types';
 import { Bus } from 'lucide-react';
@@ -9,7 +9,7 @@ interface RouteDisplayProps {
   eta: number | null;
 }
 
-const RouteDisplay: React.FC<RouteDisplayProps> = ({ 
+const RouteDisplay: React.FC<RouteDisplayProps> = memo(({ 
   route, 
   currentStopIndex,
   eta
@@ -115,6 +115,6 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default RouteDisplay;

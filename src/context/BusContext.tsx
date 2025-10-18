@@ -9,10 +9,11 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { BusData, BusStop, EtaRequest, Notification, Location } from '../types';
+import { BusData, BusStop, EtaRequest, Notification } from '../types';
 import { busRoutes, drivers } from '../data/busRoutes';
 import { formatTime } from '../utils/geofence';
 import { toast } from 'react-hot-toast';
+import quotaManager from '../utils/quotaManager';
 
 // Simplified bus state structure for Firebase
 interface BusState {
@@ -21,17 +22,6 @@ interface BusState {
   eta: number | null;
   routeCompleted: boolean;
   lastUpdated: string;
-  currentLocation?: {
-    lat: number;
-    lng: number;
-    timestamp: string;
-    speed: number | null;
-  };
-  currentDriver?: {
-    uid: string;
-    email: string;
-    name: string;
-  };
 }
 
 interface BusContextType {
@@ -44,8 +34,6 @@ interface BusContextType {
   resetBusProgress: (busId: number) => void;
   getFormattedTime: () => string;
   requestStop: (busId: number) => void;
-  logDriverAttendance: (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number; speed: number | null }) => Promise<void>;
-  updateDriverLocation: (busId: number, location: { lat: number; lng: number; speed: number | null }) => void;
   reverseRoute: () => void;
   loading: boolean;
   firebaseConnected: boolean;
@@ -72,6 +60,15 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionRetryCount = useRef(0);
   const isInitializedRef = useRef(false);
+  const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const initializedBusesRef = useRef<Set<number>>(new Set());
+  const activeListenersRef = useRef<Set<number>>(new Set());
+  
+  // Rate limiting for Firebase updates
+  const updateQueueRef = useRef<Array<{busId: number, updates: Partial<BusState>}>>([]);
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  const UPDATE_THROTTLE = 3000; // Minimum 3 seconds between updates
   
   // Initialize buses with hardcoded routes - RUN ONLY ONCE
   useEffect(() => {
@@ -110,12 +107,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (retryTimeoutRef.current) {
         clearTimeout(retryTimeoutRef.current);
       }
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+      }
+      // Clear the update queue
+      updateQueueRef.current = [];
     };
   }, []);
 
-  // Firebase listener for bus states only (with better error handling and real-time optimization)
+  // Firebase listener for bus states - OPTIMIZED FOR MANY STUDENTS
   useEffect(() => {
-    if (!db) return;
+    if (!db || Object.keys(buses).length === 0) return;
 
     // Clear any existing subscription
     if (unsubscribeRef.current) {
@@ -123,30 +125,42 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeRef.current = null;
     }
 
+    // Clear any existing connection check interval
+    if (connectionCheckIntervalRef.current) {
+      clearInterval(connectionCheckIntervalRef.current);
+      connectionCheckIntervalRef.current = null;
+    }
+
     const setupListener = () => {
       try {
-        console.log('Setting up Firebase listener...');
+        // For student use case: Listen to all buses to ensure any selected bus is available
+        // This is more efficient than constantly subscribing/unsubscribing
         const unsubscribe = onSnapshot(
           collection(db as Firestore, 'busStates'),
           {
-            // Include metadata changes to better handle connection state
-            includeMetadataChanges: true // Enable for better real-time detection
+            includeMetadataChanges: true
           },
           (snapshot) => {
             try {
-              console.log('Received snapshot with', snapshot.docChanges().length, 'changes');
               let hasUpdates = false;
               const updatedBuses: Record<number, Partial<BusData>> = {};
               
               snapshot.docChanges().forEach((change) => {
                 if (change.type === 'modified' || change.type === 'added') {
-                  const busState = change.doc.data() as BusState;
-                  const busId = busState.id;
+                  const busStateData = change.doc.data();
+                  const busId = busStateData.id || busStateData.busId;
+                  
+                  // Extract the essential fields regardless of structure
+                  const busState = {
+                    id: busId,
+                    currentStopIndex: busStateData.currentStopIndex !== undefined ? busStateData.currentStopIndex : (busStateData.currentStopIndex || 0),
+                    eta: busStateData.eta !== undefined ? busStateData.eta : (busStateData.eta || null),
+                    routeCompleted: busStateData.routeCompleted !== undefined ? busStateData.routeCompleted : (busStateData.routeCompleted || false)
+                  };
                   
                   // Get the initial route from our local buses state
                   const localBus = buses[busId];
                   if (localBus) {
-                    console.log('Processing update for bus', busId, 'with stop index', busState.currentStopIndex);
                     // Prepare update for this bus
                     const updates: Partial<BusData> = {
                       currentStopIndex: busState.currentStopIndex,
@@ -158,21 +172,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       routeCompleted: busState.routeCompleted || false
                     };
                     
-                    // Add driver information if available
-                    if (busState.currentDriver) {
-                      updates.currentDriver = busState.currentDriver;
-                    }
-                    
-                    // Add location information if available
-                    if (busState.currentLocation) {
-                      updates.currentLocation = {
-                        lat: busState.currentLocation.lat,
-                        lng: busState.currentLocation.lng,
-                        timestamp: busState.currentLocation.timestamp,
-                        speed: busState.currentLocation.speed || 0
-                      };
-                    }
-                    
                     updatedBuses[busId] = updates;
                     hasUpdates = true;
                   }
@@ -181,7 +180,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               
               // Apply all updates at once
               if (hasUpdates) {
-                console.log('Applying updates to buses:', Object.keys(updatedBuses));
                 setBuses(prev => {
                   const newBuses = { ...prev };
                   Object.keys(updatedBuses).forEach(busIdStr => {
@@ -200,9 +198,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               
               setFirebaseConnected(true);
               setFirebaseError(null);
-              connectionRetryCount.current = 0; // Reset retry count on successful connection
+              connectionRetryCount.current = 0;
               
-              // Clear any retry timeout on successful connection
               if (retryTimeoutRef.current) {
                 clearTimeout(retryTimeoutRef.current);
                 retryTimeoutRef.current = null;
@@ -213,40 +210,46 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           },
           (error: any) => {
-            console.error('Error listening to bus states:', error);
-            setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
-            setFirebaseConnected(false);
-            
-            // Provide more specific error handling for permissions issues
-            if (error.code === 'permission-denied') {
-              setFirebaseError('Permission Error: Please check Firebase security rules');
-              console.error('Firebase permission denied. Check security rules.');
-            }
-            
-            // Implement exponential backoff for reconnection
-            if (connectionRetryCount.current < 5) { // Limit retries to prevent infinite loop
-              connectionRetryCount.current += 1;
-              const retry = () => {
-                console.log('Retrying Firebase connection... Attempt', connectionRetryCount.current);
-                setupListener();
-              };
-              
-              // Retry after 2 seconds, then 4, then 8, up to 30 seconds
-              const retryDelay = Math.min(2000 * Math.pow(2, connectionRetryCount.current - 1), 30000);
-              console.log('Scheduling retry in', retryDelay, 'ms');
-              retryTimeoutRef.current = setTimeout(retry, retryDelay);
-            } else {
-              console.error('Max retry attempts reached. Stopping reconnection attempts.');
-              setFirebaseError('Max retry attempts reached. Please refresh the page to reconnect.');
-            }
+            handleFirebaseError(error);
           }
         );
         
         unsubscribeRef.current = unsubscribe;
+        
+        // Set up periodic connection check
+        connectionCheckIntervalRef.current = setInterval(() => {
+          // This will help detect connection issues faster
+        }, 30000);
       } catch (error: any) {
         console.error('Error setting up Firebase listener:', error);
         setFirebaseError(`Setup Error: ${error.message || 'Failed to setup listener'}`);
         setFirebaseConnected(false);
+      }
+    };
+
+    const handleFirebaseError = (error: any) => {
+      console.error('Error listening to bus states:', error);
+      setFirebaseError(`Listener Error: ${error.message || 'Failed to listen for updates'}`);
+      setFirebaseConnected(false);
+      
+      if (error.code === 'permission-denied') {
+        setFirebaseError('Permission Error: Please check Firebase security rules');
+      } else if (error.code === 'resource-exhausted') {
+        setFirebaseError('Quota Exceeded: Too many requests. Updates will be delayed.');
+        toast.error('Quota exceeded. Updates will be delayed. Please wait before making more changes.');
+        quotaManager.clearQueue();
+      }
+      
+      if (connectionRetryCount.current < 5) {
+        connectionRetryCount.current += 1;
+        const retry = () => {
+          setupListener();
+        };
+        
+        const retryDelay = Math.min(2000 * Math.pow(2, connectionRetryCount.current - 1), 30000);
+        retryTimeoutRef.current = setTimeout(retry, retryDelay);
+      } else {
+        setFirebaseError('Max retry attempts reached. Please refresh the page to reconnect.');
       }
     };
 
@@ -262,8 +265,12 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
+      if (connectionCheckIntervalRef.current) {
+        clearInterval(connectionCheckIntervalRef.current);
+        connectionCheckIntervalRef.current = null;
+      }
     };
-  }, [db]); // Remove buses dependency to prevent re-subscription
+  }, [db, buses]);
 
   // Initialize bus states in Firebase (with better error handling) - RUN ONLY ONCE
   useEffect(() => {
@@ -271,196 +278,96 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const initializeBusStates = async () => {
       try {
-        console.log('Initializing bus states in Firebase');
         const promises = Object.values(buses).map(async (bus) => {
-          const busState: BusState = {
-            id: bus.id,
-            currentStopIndex: bus.currentStopIndex,
-            eta: bus.eta,
-            routeCompleted: bus.routeCompleted || false,
-            lastUpdated: new Date().toISOString()
-          };
-          
-          if (db) {
-            // Use setDoc with merge to avoid overwriting existing data
-            await setDoc(doc(db as Firestore, 'busStates', bus.id.toString()), busState, { merge: true });
+          // Only initialize buses that haven't been initialized yet
+          if (!initializedBusesRef.current.has(bus.id)) {
+            const busRef = doc(db as Firestore, 'busStates', bus.id.toString());
+            const busDoc = await getDoc(busRef);
+            
+            if (!busDoc.exists()) {
+              // Use only essential fields for Firebase initialization
+              const busState = {
+                id: bus.id,
+                currentStopIndex: bus.currentStopIndex,
+                eta: bus.eta,
+                routeCompleted: bus.routeCompleted || false,
+                lastUpdated: new Date().toISOString()
+              };
+              
+              await setDoc(busRef, busState, { merge: true });
+            }
+            
+            // Mark this bus as initialized
+            initializedBusesRef.current.add(bus.id);
           }
         });
         
-        await Promise.allSettled(promises); // Use allSettled to prevent one failure from stopping all
-        console.log('Bus states initialized successfully');
+        await Promise.allSettled(promises);
         setFirebaseConnected(true);
         setFirebaseError(null);
-        isInitializedRef.current = true; // Mark as initialized
+        isInitializedRef.current = true;
       } catch (error: any) {
         console.error('Error initializing bus states:', error);
         setFirebaseError(`Initialization Error: ${error.message || 'Failed to initialize bus states'}`);
       }
     };
 
-    initializeBusStates();
+    const timer = setTimeout(() => {
+      initializeBusStates();
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [buses, db]);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
   };
 
-  // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES
+  // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES WITH RATE LIMITING
   const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
     if (!db || !firebaseConnected) {
-      console.warn('Firebase not connected, skipping update for bus', busId);
-      // Try to reconnect
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
       return;
     }
 
     try {
-      console.log('Updating Firebase state for bus', busId, 'with updates:', updates);
-      const busRef = doc(db as Firestore, 'busStates', busId.toString());
-      
-      // Use setDoc with merge for faster updates and to avoid conflicts
-      await setDoc(busRef, {
-        ...updates,
-        lastUpdated: new Date().toISOString()
-      }, { merge: true });
+      // Use the quota manager to queue and rate-limit the update
+      await quotaManager.queueUpdate(async () => {
+        const busRef = doc(db as Firestore, 'busStates', busId.toString());
+        
+        // Only include fields that are actually being updated
+        const firebaseUpdates: any = {
+          lastUpdated: new Date().toISOString()
+        };
+        
+        if (updates.currentStopIndex !== undefined) {
+          firebaseUpdates.currentStopIndex = updates.currentStopIndex;
+        }
+        if (updates.eta !== undefined) {
+          firebaseUpdates.eta = updates.eta;
+        }
+        if (updates.routeCompleted !== undefined) {
+          firebaseUpdates.routeCompleted = updates.routeCompleted;
+        }
+        
+        // Only update if there are actual changes
+        if (Object.keys(firebaseUpdates).length > 1) { // More than just lastUpdated
+          await setDoc(busRef, firebaseUpdates, { merge: true });
+        }
+        
+        return true;
+      });
       
       setFirebaseError(null);
-      console.log('Firebase update successful for bus', busId);
     } catch (error: any) {
       console.error(`Error updating bus state ${busId}:`, error);
       setFirebaseError(`Update Error: ${error.message || 'Failed to update bus state'}`);
       
-      // If it's a permission error, show a more user-friendly message
       if (error.code === 'permission-denied') {
         toast.error('Permission denied. Please check your credentials.');
       } else if (error.code === 'resource-exhausted') {
-        toast.error('Too many requests. Please wait before trying again.');
+        toast.error('Quota exceeded. Please wait before trying again.');
+        quotaManager.clearQueue();
       }
-    }
-  };
-
-  const logDriverAttendance = async (busId: number, type: 'entry' | 'exit', location: { lat: number; lng: number; speed: number | null }) => {
-    try {
-      const driver = drivers.find(d => d.bus === busId);
-      if (!driver) return;
-
-      const formattedTime = getFormattedTime();
-      
-      // Update local state
-      setBuses(prev => {
-        const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          if (type === 'entry') {
-            updatedBuses[busId] = {
-              ...updatedBuses[busId],
-              currentDriver: {
-                uid: driver.email,
-                email: driver.email,
-                name: driver.name
-              },
-              currentLocation: {
-                lat: location.lat,
-                lng: location.lng,
-                timestamp: new Date().toISOString(),
-                speed: location.speed || 0
-              }
-            };
-          } else {
-            updatedBuses[busId] = {
-              ...updatedBuses[busId],
-              currentDriver: undefined,
-              currentLocation: undefined
-            };
-          }
-          
-          // Add notification (only once)
-          const newNotification: Notification = {
-            type: 'update',
-            message: `Driver ${type === 'entry' ? 'started' : 'ended'} shift at ${formattedTime}`,
-            timestamp: formattedTime
-          };
-          
-          // Prevent duplicate notifications
-          const existingNotification = updatedBuses[busId].notifications.find(
-            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
-          );
-          
-          if (!existingNotification) {
-            updatedBuses[busId].notifications.unshift(newNotification);
-            // Keep only the latest 5 notifications
-            if (updatedBuses[busId].notifications.length > 5) {
-              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
-            }
-          }
-        }
-        return updatedBuses;
-      });
-
-      // Update Firebase with driver attendance - IMMEDIATE UPDATE
-      if (type === 'entry') {
-        await updateBusStateInFirebase(busId, {
-          currentDriver: {
-            uid: driver.email,
-            email: driver.email,
-            name: driver.name
-          },
-          currentLocation: {
-            lat: location.lat,
-            lng: location.lng,
-            timestamp: new Date().toISOString(),
-            speed: location.speed || 0
-          }
-        });
-      } else {
-        await updateBusStateInFirebase(busId, {
-          currentDriver: undefined,
-          currentLocation: undefined
-        });
-      }
-
-      toast.success(`Driver ${type} logged successfully`);
-    } catch (error: any) {
-      console.error('Error logging driver attendance:', error);
-      setFirebaseError(`Attendance Error: ${error.message || 'Failed to log attendance'}`);
-      toast.error('Failed to log attendance');
-    }
-  };
-
-  // Update driver location continuously
-  const updateDriverLocation = async (busId: number, location: { lat: number; lng: number; speed: number | null }) => {
-    try {
-      // Update local state
-      setBuses(prev => {
-        const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
-            currentLocation: {
-              lat: location.lat,
-              lng: location.lng,
-              timestamp: new Date().toISOString(),
-              speed: location.speed || 0
-            }
-          };
-        }
-        return updatedBuses;
-      });
-
-      // Update Firebase with new location - IMMEDIATE UPDATE
-      await updateBusStateInFirebase(busId, {
-        currentLocation: {
-          lat: location.lat,
-          lng: location.lng,
-          timestamp: new Date().toISOString(),
-          speed: location.speed || 0
-        }
-      });
-    } catch (error: any) {
-      console.error('Error updating driver location:', error);
-      setFirebaseError(`Location Error: ${error.message || 'Failed to update location'}`);
     }
   };
 
@@ -491,26 +398,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             route: updatedRoute,
             routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
           };
-
-          // Add notification (only once)
-          const newNotification: Notification = {
-            type: 'update',
-            message: `Bus arrived at ${currentStop.name}`,
-            timestamp: formattedTime
-          };
-          
-          // Prevent duplicate notifications
-          const existingNotification = updatedBuses[busId].notifications.find(
-            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
-          );
-          
-          if (!existingNotification) {
-            updatedBuses[busId].notifications.unshift(newNotification);
-            // Keep only the latest 5 notifications
-            if (updatedBuses[busId].notifications.length > 5) {
-              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
-            }
-          }
         }
         return updatedBuses;
       });
@@ -558,26 +445,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             route: updatedRoute,
             routeCompleted: false
           };
-
-          // Add notification (only once)
-          const newNotification: Notification = {
-            type: 'update',
-            message: `Bus returned to ${previousStop.name}`,
-            timestamp: formattedTime
-          };
-          
-          // Prevent duplicate notifications
-          const existingNotification = updatedBuses[busId].notifications.find(
-            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
-          );
-          
-          if (!existingNotification) {
-            updatedBuses[busId].notifications.unshift(newNotification);
-            // Keep only the latest 5 notifications
-            if (updatedBuses[busId].notifications.length > 5) {
-              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
-            }
-          }
         }
         return updatedBuses;
       });
@@ -602,9 +469,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const bus = buses[busId];
       if (!bus) return;
 
-      const nextStopName = bus.route[bus.currentStopIndex + 1]?.name || 'next stop';
-      const formattedTime = getFormattedTime();
-
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
@@ -613,47 +477,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...updatedBuses[busId],
             eta: minutes
           };
-
-          // Add ETA request (only once)
-          const newEtaRequest: EtaRequest = {
-            stopIndex: bus.currentStopIndex,
-            minutes: minutes,
-            timestamp: formattedTime,
-            nextStop: nextStopName
-          };
-          
-          // Prevent duplicate ETA requests
-          const existingRequest = updatedBuses[busId].etaRequests.find(
-            r => r.stopIndex === newEtaRequest.stopIndex && r.minutes === newEtaRequest.minutes
-          );
-          
-          if (!existingRequest) {
-            updatedBuses[busId].etaRequests.unshift(newEtaRequest);
-            // Keep only the latest 5 requests
-            if (updatedBuses[busId].etaRequests.length > 5) {
-              updatedBuses[busId].etaRequests = updatedBuses[busId].etaRequests.slice(0, 5);
-            }
-          }
-
-          // Add notification (only once)
-          const newNotification: Notification = {
-            type: 'eta',
-            message: `ETA to ${nextStopName}: ${minutes} minutes`,
-            timestamp: formattedTime
-          };
-          
-          // Prevent duplicate notifications
-          const existingNotification = updatedBuses[busId].notifications.find(
-            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
-          );
-          
-          if (!existingNotification) {
-            updatedBuses[busId].notifications.unshift(newNotification);
-            // Keep only the latest 5 notifications
-            if (updatedBuses[busId].notifications.length > 5) {
-              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
-            }
-          }
         }
         return updatedBuses;
       });
@@ -673,34 +496,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const requestStop = async (busId: number) => {
     try {
-      const formattedTime = getFormattedTime();
-
-      // Update local state
-      setBuses(prev => {
-        const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          const newNotification: Notification = {
-            type: 'request',
-            message: '5-minute stop requested by student',
-            timestamp: formattedTime
-          };
-          
-          // Prevent duplicate notifications
-          const existingNotification = updatedBuses[busId].notifications.find(
-            n => n.message === newNotification.message && n.timestamp === newNotification.timestamp
-          );
-          
-          if (!existingNotification) {
-            updatedBuses[busId].notifications.unshift(newNotification);
-            // Keep only the latest 5 notifications
-            if (updatedBuses[busId].notifications.length > 5) {
-              updatedBuses[busId].notifications = updatedBuses[busId].notifications.slice(0, 5);
-            }
-          }
-        }
-        return updatedBuses;
-      });
-
       toast.success('Stop request sent to driver');
     } catch (error: any) {
       console.error('Error requesting stop:', error);
@@ -790,8 +585,6 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetBusProgress,
         getFormattedTime,
         requestStop,
-        logDriverAttendance,
-        updateDriverLocation,
         reverseRoute,
         loading,
         firebaseConnected,
