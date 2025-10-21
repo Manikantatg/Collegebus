@@ -138,7 +138,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const unsubscribe = onSnapshot(
           collection(db as Firestore, 'busStates'),
           {
-            includeMetadataChanges: true
+            includeMetadataChanges: false // Disable metadata changes to reduce unnecessary updates
           },
           (snapshot) => {
             try {
@@ -161,19 +161,25 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 // Get the initial route from our local buses state
                 const localBus = buses[busId];
                 if (localBus) {
-                  // Prepare update for this bus
-                  const updates: Partial<BusData> = {
-                    currentStopIndex: busState.currentStopIndex,
-                    eta: busState.eta,
-                    route: localBus.route.map((stop, index) => ({
-                      ...stop,
-                      completed: index < busState.currentStopIndex
-                    })),
-                    routeCompleted: busState.routeCompleted || false
-                  };
-                  
-                  updatedBuses[busId] = updates;
-                  hasUpdates = true;
+                  // Only update if there are actual changes
+                  if (localBus.currentStopIndex !== busState.currentStopIndex || 
+                      localBus.eta !== busState.eta || 
+                      localBus.routeCompleted !== busState.routeCompleted) {
+                    
+                    // Prepare update for this bus
+                    const updates: Partial<BusData> = {
+                      currentStopIndex: busState.currentStopIndex,
+                      eta: busState.eta,
+                      route: localBus.route.map((stop, index) => ({
+                        ...stop,
+                        completed: index < busState.currentStopIndex
+                      })),
+                      routeCompleted: busState.routeCompleted || false
+                    };
+                    
+                    updatedBuses[busId] = updates;
+                    hasUpdates = true;
+                  }
                 }
               });
               
@@ -215,16 +221,13 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         unsubscribeRef.current = unsubscribe;
         
-        // Set up periodic connection check
+        // Set up periodic connection check with a longer interval
         connectionCheckIntervalRef.current = setInterval(() => {
-          // Force a reconnection check by setting connected to false and let the listener re-establish
-          setFirebaseConnected(false);
-          setTimeout(() => {
-            if (unsubscribeRef.current) {
-              setFirebaseConnected(true);
-            }
-          }, 1000);
-        }, 30000);
+          // Simple connection health check
+          if (!firebaseConnected) {
+            setFirebaseConnected(true);
+          }
+        }, 60000); // Check every minute instead of 30 seconds
       } catch (error: any) {
         console.error('Error setting up Firebase listener:', error);
         setFirebaseError(`Setup Error: ${error.message || 'Failed to setup listener'}`);
@@ -275,7 +278,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         connectionCheckIntervalRef.current = null;
       }
     };
-  }, [db, buses]);
+  }, [db, buses, firebaseConnected]);
 
   // Initialize bus states in Firebase (with better error handling) - RUN ONLY ONCE
   useEffect(() => {

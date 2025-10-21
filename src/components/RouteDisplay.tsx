@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusStop } from '../types';
 import { Bus } from 'lucide-react';
@@ -14,6 +14,20 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
   currentStopIndex,
   eta
 }) => {
+  // Memoize the progress height calculation
+  const progressHeight = useMemo(() => {
+    return route.length > 1 
+      ? `calc(${Math.max(0, currentStopIndex * 100 / (route.length - 1))}% - 12px)` 
+      : '0%';
+  }, [route.length, currentStopIndex]);
+
+  // Memoize the bus position calculation
+  const busPosition = useMemo(() => {
+    return route.length > 1 
+      ? `calc(${currentStopIndex * 100 / (route.length - 1)}% - 4px + 24px)` 
+      : '24px';
+  }, [route.length, currentStopIndex]);
+
   return (
     <div className="w-full">
       <div className="relative flex flex-col space-y-1">
@@ -25,9 +39,7 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
           className="absolute left-3 top-6 w-1 bg-green-500 rounded-full z-10"
           initial={{ height: 0 }}
           animate={{ 
-            height: route.length > 1 
-              ? `calc(${Math.max(0, currentStopIndex * 100 / (route.length - 1))}% - 12px)` 
-              : '0%'
+            height: progressHeight
           }}
           transition={{ duration: 0.5 }}
         ></motion.div>
@@ -38,9 +50,7 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
             className="absolute left-0 z-20 text-amber-500"
             initial={{ top: '24px' }}
             animate={{ 
-              top: route.length > 1 
-                ? `calc(${currentStopIndex * 100 / (route.length - 1)}% - 4px + 24px)` 
-                : '24px'
+              top: busPosition
             }}
             transition={{ duration: 0.8, type: "spring", stiffness: 300, damping: 30 }}
           >
@@ -114,6 +124,22 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
         })}
       </div>
     </div>
+  );
+}, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.currentStopIndex === nextProps.currentStopIndex &&
+    prevProps.eta === nextProps.eta &&
+    prevProps.route.length === nextProps.route.length &&
+    prevProps.route.every((stop, index) => {
+      const nextStop = nextProps.route[index];
+      return (
+        stop.name === nextStop.name &&
+        stop.scheduledTime === nextStop.scheduledTime &&
+        stop.completed === nextStop.completed &&
+        stop.actualTime === nextStop.actualTime
+      );
+    })
   );
 });
 
