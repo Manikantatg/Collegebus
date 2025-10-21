@@ -4,7 +4,7 @@ class QuotaManager {
   private lastUpdate: number = 0;
   private updateQueue: Array<() => Promise<any>> = [];
   private isProcessing: boolean = false;
-  private readonly MIN_UPDATE_INTERVAL: number = 3000; // 3 seconds minimum between updates
+  private readonly MIN_UPDATE_INTERVAL: number = 1000; // Reduced to 1 second for better real-time updates
 
   private constructor() {}
 
@@ -17,6 +17,8 @@ class QuotaManager {
 
   // Add an update operation to the queue
   async queueUpdate(operation: () => Promise<any>): Promise<any> {
+    // For real-time updates, we want to process them quickly but still prevent quota exceeded errors
+    // We'll use a shorter queue for critical real-time updates
     return new Promise((resolve, reject) => {
       this.updateQueue.push(async () => {
         try {
@@ -70,6 +72,13 @@ class QuotaManager {
   clearQueue(): void {
     this.updateQueue = [];
     this.isProcessing = false;
+  }
+  
+  // Check if we can process an update immediately (for critical real-time updates)
+  canProcessImmediately(): boolean {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - this.lastUpdate;
+    return timeSinceLastUpdate >= this.MIN_UPDATE_INTERVAL;
   }
 }
 

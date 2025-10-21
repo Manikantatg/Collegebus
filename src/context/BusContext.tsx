@@ -68,7 +68,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateQueueRef = useRef<Array<{busId: number, updates: Partial<BusState>}>>([]);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(0);
-  const UPDATE_THROTTLE = 3000; // Minimum 3 seconds between updates
+  const UPDATE_THROTTLE = 1000; // Reduced to 1 second for better real-time updates
   
   // Initialize buses with hardcoded routes - RUN ONLY ONCE
   useEffect(() => {
@@ -115,7 +115,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // Firebase listener for bus states - OPTIMIZED FOR MANY STUDENTS
+  // Firebase listener for bus states - OPTIMIZED FOR REAL-TIME UPDATES
   useEffect(() => {
     if (!db || Object.keys(buses).length === 0) return;
 
@@ -145,36 +145,35 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               let hasUpdates = false;
               const updatedBuses: Record<number, Partial<BusData>> = {};
               
-              snapshot.docChanges().forEach((change) => {
-                if (change.type === 'modified' || change.type === 'added') {
-                  const busStateData = change.doc.data();
-                  const busId = busStateData.id || busStateData.busId;
-                  
-                  // Extract the essential fields regardless of structure
-                  const busState = {
-                    id: busId,
-                    currentStopIndex: busStateData.currentStopIndex !== undefined ? busStateData.currentStopIndex : (busStateData.currentStopIndex || 0),
-                    eta: busStateData.eta !== undefined ? busStateData.eta : (busStateData.eta || null),
-                    routeCompleted: busStateData.routeCompleted !== undefined ? busStateData.routeCompleted : (busStateData.routeCompleted || false)
+              // Process all documents in the snapshot
+              snapshot.forEach((doc) => {
+                const busStateData = doc.data();
+                const busId = parseInt(doc.id);
+                
+                // Extract the essential fields
+                const busState = {
+                  id: busId,
+                  currentStopIndex: busStateData.currentStopIndex !== undefined ? busStateData.currentStopIndex : (busStateData.currentStopIndex || 0),
+                  eta: busStateData.eta !== undefined ? busStateData.eta : (busStateData.eta || null),
+                  routeCompleted: busStateData.routeCompleted !== undefined ? busStateData.routeCompleted : (busStateData.routeCompleted || false)
+                };
+                
+                // Get the initial route from our local buses state
+                const localBus = buses[busId];
+                if (localBus) {
+                  // Prepare update for this bus
+                  const updates: Partial<BusData> = {
+                    currentStopIndex: busState.currentStopIndex,
+                    eta: busState.eta,
+                    route: localBus.route.map((stop, index) => ({
+                      ...stop,
+                      completed: index < busState.currentStopIndex
+                    })),
+                    routeCompleted: busState.routeCompleted || false
                   };
                   
-                  // Get the initial route from our local buses state
-                  const localBus = buses[busId];
-                  if (localBus) {
-                    // Prepare update for this bus
-                    const updates: Partial<BusData> = {
-                      currentStopIndex: busState.currentStopIndex,
-                      eta: busState.eta,
-                      route: localBus.route.map((stop, index) => ({
-                        ...stop,
-                        completed: index < busState.currentStopIndex
-                      })),
-                      routeCompleted: busState.routeCompleted || false
-                    };
-                    
-                    updatedBuses[busId] = updates;
-                    hasUpdates = true;
-                  }
+                  updatedBuses[busId] = updates;
+                  hasUpdates = true;
                 }
               });
               
@@ -323,15 +322,56 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return formatTime(new Date());
   };
 
-  // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES WITH RATE LIMITING
+  // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES WITH IMPROVED RATE LIMITING
   const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
     if (!db || !firebaseConnected) {
-      return;
+      // If not connected, queue the update for when connection is restored
+      return new Promise((resolve) => {
+        const retryUpdate = async () => {
+          if (db && firebaseConnected) {
+            try {
+              const busRef = doc(db as Firestore, 'busStates', busId.toString());
+              
+              // Only include fields that are actually being updated
+              const firebaseUpdates: any = {
+                lastUpdated: new Date().toISOString()
+              };
+              
+              if (updates.currentStopIndex !== undefined) {
+                firebaseUpdates.currentStopIndex = updates.currentStopIndex;
+              }
+              if (updates.eta !== undefined) {
+                firebaseUpdates.eta = updates.eta;
+              }
+              if (updates.routeCompleted !== undefined) {
+                firebaseUpdates.routeCompleted = updates.routeCompleted;
+              }
+              
+              // Only update if there are actual changes
+              if (Object.keys(firebaseUpdates).length > 1) { // More than just lastUpdated
+                await setDoc(busRef, firebaseUpdates, { merge: true });
+              }
+              
+              setFirebaseError(null);
+              resolve(true);
+            } catch (error: any) {
+              console.error(`Error updating bus state ${busId}:`, error);
+              setFirebaseError(`Update Error: ${error.message || 'Failed to update bus state'}`);
+              resolve(false);
+            }
+          } else {
+            // Retry after a short delay
+            setTimeout(retryUpdate, 1000);
+          }
+        };
+        
+        retryUpdate();
+      });
     }
 
     try {
-      // Use the quota manager to queue and rate-limit the update
-      await quotaManager.queueUpdate(async () => {
+      // For critical real-time updates, try to process immediately if possible
+      if (quotaManager.canProcessImmediately()) {
         const busRef = doc(db as Firestore, 'busStates', busId.toString());
         
         // Only include fields that are actually being updated
@@ -354,8 +394,35 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           await setDoc(busRef, firebaseUpdates, { merge: true });
         }
         
-        return true;
-      });
+        setFirebaseError(null);
+      } else {
+        // Use the quota manager to queue and rate-limit the update
+        await quotaManager.queueUpdate(async () => {
+          const busRef = doc(db as Firestore, 'busStates', busId.toString());
+          
+          // Only include fields that are actually being updated
+          const firebaseUpdates: any = {
+            lastUpdated: new Date().toISOString()
+          };
+          
+          if (updates.currentStopIndex !== undefined) {
+            firebaseUpdates.currentStopIndex = updates.currentStopIndex;
+          }
+          if (updates.eta !== undefined) {
+            firebaseUpdates.eta = updates.eta;
+          }
+          if (updates.routeCompleted !== undefined) {
+            firebaseUpdates.routeCompleted = updates.routeCompleted;
+          }
+          
+          // Only update if there are actual changes
+          if (Object.keys(firebaseUpdates).length > 1) { // More than just lastUpdated
+            await setDoc(busRef, firebaseUpdates, { merge: true });
+          }
+          
+          return true;
+        });
+      }
       
       setFirebaseError(null);
     } catch (error: any) {

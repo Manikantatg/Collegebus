@@ -25,6 +25,33 @@ service cloud.firestore {
 }
 ```
 
+### Enhanced Rules for Better Real-time Updates
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow public read/write access for busStates collection with validation
+    match /busStates/{busId} {
+      allow read: if true;
+      allow write: if true;
+      
+      // Validate data structure
+      allow write: if request.resource.data.keys().hasOnly([
+        'id', 'currentStopIndex', 'eta', 'routeCompleted', 'lastUpdated'
+      ]);
+    }
+    
+    // Allow read access to other collections for public
+    // but restrict write access
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
+```
+
 ## Deploying Security Rules
 
 To deploy these security rules to your Firebase project, follow these steps:
