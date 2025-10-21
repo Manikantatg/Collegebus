@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, PhoneCall, RefreshCw, Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
@@ -11,6 +11,12 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { buses, selectedBus, setSelectedBus, requestStop, firebaseConnected, firebaseError } = useBus();
   const [showNotification, setShowNotification] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
+  
+  // Force update mechanism to ensure UI refreshes
+  const forceUpdate = useCallback(() => {
+    setLastUpdate(Date.now());
+  }, []);
   
   // Watch for updates to show notifications
   useEffect(() => {
@@ -32,10 +38,19 @@ const StudentDashboard: React.FC = () => {
     }
   }, [buses, selectedBus]);
   
+  // Periodic refresh to ensure live updates are visible
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate();
+    }, 5000); // Refresh every 5 seconds to ensure updates are visible
+    
+    return () => clearInterval(interval);
+  }, [forceUpdate]);
+  
   // Memoize selected bus data to prevent unnecessary re-renders
   const busData = useMemo(() => {
     return selectedBus ? buses[selectedBus] : null;
-  }, [buses, selectedBus]);
+  }, [buses, selectedBus, lastUpdate]); // Add lastUpdate as dependency to force refresh
   
   const driverData = useMemo(() => {
     return selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
@@ -133,7 +148,7 @@ const StudentDashboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="card mb-4"
-                key={`route-display-${selectedBus}-${busData.currentStopIndex}-${busData.eta ?? 'null'}`}
+                key={`route-display-${selectedBus}-${busData.currentStopIndex}-${busData.eta ?? 'null'}-${lastUpdate}`}
               >
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Bus Route</h2>
@@ -190,7 +205,7 @@ const StudentDashboard: React.FC = () => {
                   </div>
                   <button
                     className="btn btn-outline py-2 text-sm"
-                    onClick={() => window.location.href = `mailto:${driverData.email}`}
+                    onClick={() => window.location.href = `tel:${driverData.phone}`}
                   >
                     <PhoneCall size={16} />
                     <span>Contact Driver</span>

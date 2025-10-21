@@ -217,7 +217,13 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         // Set up periodic connection check
         connectionCheckIntervalRef.current = setInterval(() => {
-          // This will help detect connection issues faster
+          // Force a reconnection check by setting connected to false and let the listener re-establish
+          setFirebaseConnected(false);
+          setTimeout(() => {
+            if (unsubscribeRef.current) {
+              setFirebaseConnected(true);
+            }
+          }, 1000);
         }, 30000);
       } catch (error: any) {
         console.error('Error setting up Firebase listener:', error);
