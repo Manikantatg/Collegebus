@@ -56,8 +56,9 @@ const Home: React.FC = () => {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.8 }}
       >
-        <p>📚 Made possible by Doutly — Where Curiosity Meets 💰 Opportunity</p>
-        <p className="mt-2">v1.0.0</p>
+        <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+        <p className="mt-1 text-red-500">CSE C Sec Batch 24-25</p>
+        <p className="mt-1">v1.0.0</p>
       </motion.div>
     </div>
   );
