@@ -11,7 +11,7 @@ import { toast } from 'react-hot-toast';
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { busId } = useParams<{ busId: string }>();
-  const { buses, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, firebaseConnected, firebaseError } = useBus();
+  const { buses, selectedBus, setSelectedBus, moveToNextStop, moveToPreviousStop, setEta, resetBusProgress, getFormattedTime, firebaseConnected, firebaseError, updateStudentCount } = useBus();
   
   useEffect(() => {
     if (busId) {
@@ -120,6 +120,15 @@ const DriverDashboard: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               className="card h-full"
             >
+              {/* Student Count Button - Read Only */}
+              {busData && (
+                <div className="flex justify-end mb-4">
+                  <div className="bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold">{busData.studentCount || 0}</span>
+                  </div>
+                </div>
+              )}
+              
               <RouteDisplay
                 route={busData.route}
                 currentStopIndex={busData.currentStopIndex}

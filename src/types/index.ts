@@ -23,6 +23,7 @@ export interface BusData {
   lastLog?: BusLog;
   totalDistance?: number;
   routeCompleted?: boolean; // Add this property to match Firebase structure
+  studentCount?: number; // Add student count property
 }
 
 export interface EtaRequest {

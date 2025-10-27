@@ -35,6 +35,7 @@ interface BusContextType {
   getFormattedTime: () => string;
   requestStop: (busId: number) => void;
   reverseRoute: () => void;
+  updateStudentCount: (busId: number, count: number) => void; // Add this line
   loading: boolean;
   firebaseConnected: boolean;
   firebaseError: string | null;
@@ -81,6 +82,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const route = busRoutes[busId];
         const driver = drivers.find(d => d.bus === busId);
         
+        // Generate a random student count between 0 and 50
+        const randomStudentCount = Math.floor(Math.random() * 51);
+        
         busesMap[busId] = {
           id: busId,
           currentStopIndex: 0,
@@ -89,7 +93,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           etaRequests: [],
           notifications: [],
           totalDistance: 0,
-          routeCompleted: false
+          routeCompleted: false,
+          studentCount: randomStudentCount // Initialize with random student count
         };
       });
       
@@ -570,6 +575,29 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Add function to update student count
+  const updateStudentCount = async (busId: number, count: number) => {
+    try {
+      // Update local state
+      setBuses(prev => {
+        const updatedBuses = { ...prev };
+        if (updatedBuses[busId]) {
+          updatedBuses[busId] = {
+            ...updatedBuses[busId],
+            studentCount: Math.max(0, count) // Ensure count is not negative
+          };
+        }
+        return updatedBuses;
+      });
+
+      // Note: Student count is not persisted to Firebase as it's meant to be real-time only
+      toast.success('Student count updated');
+    } catch (error: any) {
+      console.error('Error updating student count:', error);
+      toast.error('Failed to update student count');
+    }
+  };
+
   const requestStop = async (busId: number) => {
     try {
       toast.success('Stop request sent to driver');
@@ -662,6 +690,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getFormattedTime,
         requestStop,
         reverseRoute,
+        updateStudentCount, // Add the new function to the context value
         loading,
         firebaseConnected,
         firebaseError
