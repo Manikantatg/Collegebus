@@ -133,6 +133,7 @@ const DriverDashboard: React.FC = () => {
                 route={busData.route}
                 currentStopIndex={busData.currentStopIndex}
                 eta={busData.eta}
+                atStop={busData.atStop}
               />
             </motion.div>
           </div>

@@ -5,6 +5,11 @@ export interface BusStop {
   completed: boolean;
 }
 
+export interface Location {
+  lat: number;
+  lng: number;
+}
+
 export interface BusLog {
   busId: number;
   driverId: string;
@@ -24,6 +29,7 @@ export interface BusData {
   totalDistance?: number;
   routeCompleted?: boolean; // Add this property to match Firebase structure
   studentCount?: number; // Add student count property
+  atStop?: boolean; // Whether the bus has arrived at the current stop
 }
 
 export interface EtaRequest {

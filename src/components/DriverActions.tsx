@@ -10,6 +10,7 @@ interface DriverActionsProps {
   stopName: string;
   currentTime: string;
   isRouteCompleted?: boolean;
+  // Remove isAtStop prop
 }
 
 const DriverActions: React.FC<DriverActionsProps> = ({ 
@@ -20,6 +21,7 @@ const DriverActions: React.FC<DriverActionsProps> = ({
   stopName,
   currentTime,
   isRouteCompleted = false
+  // Remove isAtStop prop
 }) => {
   return (
     <div className="w-full">

@@ -22,7 +22,8 @@ const BusSelector: React.FC<BusSelectorProps> = ({
     }
   };
   
-  const busNumbers = Array.from({ length: 16 }, (_, i) => i + 1);
+  // Updated to include all buses (1-17, 20)
+  const busNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20];
   
   return (
     <div className="w-full max-w-md mx-auto">
@@ -48,7 +49,7 @@ const BusSelector: React.FC<BusSelectorProps> = ({
               delay: animate ? busId * 0.01 : 0
             }}
           >
-            {busId}
+            {busId === 17 ? "15 (BITM)" : busId}
           </motion.button>
         ))}
       </div>

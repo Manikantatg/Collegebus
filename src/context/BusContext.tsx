@@ -9,7 +9,7 @@ import {
   Firestore
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { BusData, BusStop, EtaRequest, Notification } from '../types';
+import { BusData, BusStop, EtaRequest, Notification, BusLog } from '../types';
 import { busRoutes, drivers } from '../data/busRoutes';
 import { formatTime } from '../utils/geofence';
 import { toast } from 'react-hot-toast';
@@ -94,7 +94,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           notifications: [],
           totalDistance: 0,
           routeCompleted: false,
-          studentCount: randomStudentCount // Initialize with random student count
+          studentCount: randomStudentCount, // Initialize with random student count
+          atStop: false // Initialize atStop property
         };
       });
       
@@ -663,7 +664,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...bus,
             currentStopIndex: 0,
             route: reversedRoute,
-            routeCompleted: false
+            routeCompleted: false,
+            atStop: false // Reset atStop flag when reversing route
           };
         });
         return updatedBuses;

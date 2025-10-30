@@ -7,12 +7,14 @@ interface RouteDisplayProps {
   route: BusStop[];
   currentStopIndex: number;
   eta: number | null;
+  // Remove atStop prop
 }
 
 const RouteDisplay: React.FC<RouteDisplayProps> = memo(({ 
   route, 
   currentStopIndex,
   eta
+  // Remove atStop prop
 }) => {
   // Memoize the progress height calculation
   const progressHeight = useMemo(() => {
@@ -130,6 +132,7 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
   return (
     prevProps.currentStopIndex === nextProps.currentStopIndex &&
     prevProps.eta === nextProps.eta &&
+    // Remove atStop comparison
     prevProps.route.length === nextProps.route.length &&
     prevProps.route.every((stop, index) => {
       const nextStop = nextProps.route[index];
