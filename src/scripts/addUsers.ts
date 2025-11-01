@@ -1,8 +1,13 @@
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { drivers, ADMIN_CREDENTIALS } from '../data/busRoutes';
+import { drivers, ADMIN_CREDENTIALS, SECURITY_CREDENTIALS } from '../data/busRoutes';
 import { auth } from '../firebase';
 
 async function addUsers() {
+  if (!auth) {
+    console.error('Firebase auth is not initialized');
+    return;
+  }
+
   try {
     // Add admin user
     await createUserWithEmailAndPassword(
@@ -11,6 +16,14 @@ async function addUsers() {
       ADMIN_CREDENTIALS.password
     );
     console.log('Admin user created successfully');
+
+    // Add security user
+    await createUserWithEmailAndPassword(
+      auth,
+      SECURITY_CREDENTIALS.email,
+      SECURITY_CREDENTIALS.password
+    );
+    console.log('Security user created successfully');
 
     // Add all drivers
     for (const driver of drivers) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, LogOut, Play, Store as Stop, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, LogOut, Play, Store as Stop, Wifi, WifiOff, AlertTriangle, Bus, MapPin, Clock } from 'lucide-react';
 import RouteDisplay from '../components/RouteDisplay';
 import DriverActions from '../components/DriverActions';
 import EtaRequests from '../components/EtaRequests';
@@ -28,9 +28,9 @@ const DriverDashboard: React.FC = () => {
   
   if (!busIdNum || !busData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
-        <div className="text-center p-8">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center p-8 card">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">
             {!busIdNum ? 'Invalid Bus ID' : 'Bus Data Not Found'}
           </h2>
           <button 
@@ -54,29 +54,29 @@ const DriverDashboard: React.FC = () => {
   }, [firebaseError]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-100 dark:from-slate-900 dark:to-slate-800">
-      <header className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md">
-        <div className="container mx-auto px-4 py-3">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md">
+        <div className="responsive-container py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="mr-3"
+                className="mr-4"
                 onClick={() => navigate('/')}
               >
-                <ArrowLeft size={20} />
+                <ArrowLeft size={24} />
               </motion.button>
               <div>
-                <h1 className="text-xl font-bold">Driver Dashboard</h1>
-                <p className="text-sm text-blue-100">Bus #{busIdNum}</p>
+                <h1 className="text-2xl font-bold">Driver Dashboard</h1>
+                <p className="text-blue-100">Bus #{busIdNum}</p>
               </div>
             </div>
             
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="btn bg-red-500 hover:bg-red-600 text-white"
+              className="btn bg-red-600 hover:bg-red-700 text-white flex items-center"
               onClick={stopTracking}
             >
               <Stop size={18} className="mr-2" />
@@ -86,9 +86,9 @@ const DriverDashboard: React.FC = () => {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-6">
+      <main className="responsive-container py-8">
         {/* Connection Status */}
-        <div className={`mb-4 flex items-center p-3 rounded-lg ${
+        <div className={`mb-6 flex items-center p-4 rounded-lg ${
           firebaseError 
             ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
             : firebaseConnected 
@@ -97,23 +97,23 @@ const DriverDashboard: React.FC = () => {
         }`}>
           {firebaseError ? (
             <>
-              <AlertTriangle size={18} className="mr-2" />
-              <span>Firebase Error: {firebaseError}</span>
+              <AlertTriangle size={20} className="mr-3" />
+              <span className="font-medium">Firebase Error: {firebaseError}</span>
             </>
           ) : firebaseConnected ? (
             <>
-              <Wifi size={18} className="mr-2" />
-              <span>Connected to real-time data system</span>
+              <Wifi size={20} className="mr-3" />
+              <span className="font-medium">Connected to real-time data system</span>
             </>
           ) : (
             <>
-              <WifiOff size={18} className="mr-2" />
-              <span>Data connection failed</span>
+              <WifiOff size={20} className="mr-3" />
+              <span className="font-medium">Data connection failed</span>
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -122,9 +122,9 @@ const DriverDashboard: React.FC = () => {
             >
               {/* Student Count Button - Read Only */}
               {busData && (
-                <div className="flex justify-end mb-4">
-                  <div className="bg-blue-500 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
-                    <span className="text-xl font-bold">{busData.studentCount || 0}</span>
+                <div className="flex justify-end mb-6">
+                  <div className="bg-blue-600 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
+                    <span className="text-2xl font-bold">{busData.studentCount || 0}</span>
                   </div>
                 </div>
               )}
@@ -133,7 +133,6 @@ const DriverDashboard: React.FC = () => {
                 route={busData.route}
                 currentStopIndex={busData.currentStopIndex}
                 eta={busData.eta}
-                atStop={busData.atStop}
               />
             </motion.div>
           </div>
@@ -163,7 +162,7 @@ const DriverDashboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="h-[calc(100vh-24rem)]"
+              className="h-[calc(100vh-28rem)]"
             >
               <EtaRequests 
                 requests={busData.etaRequests}
@@ -175,10 +174,12 @@ const DriverDashboard: React.FC = () => {
       </main>
       
       {/* Footer */}
-      <footer className="py-4 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 mt-auto">
-        <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-        <p className="mt-1">CSE C Sec Batch 24-25</p>
-        <p className="mt-1">v1.0.0</p>
+      <footer className="py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+        <div className="responsive-container">
+          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+          <p className="mt-1">CSE C Sec Batch 24-25</p>
+          <p className="mt-1">v1.0.0</p>
+        </div>
       </footer>
     </div>
   );

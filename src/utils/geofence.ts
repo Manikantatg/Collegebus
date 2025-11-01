@@ -16,9 +16,9 @@ export function calculateDistance(loc1: Location, loc2: Location): number {
 }
 
 export function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-IN', {
-    hour12: false,
-    hour: '2-digit',
+  return date.toLocaleTimeString('en-US', {
+    hour12: true,
+    hour: 'numeric',
     minute: '2-digit'
   });
 }

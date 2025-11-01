@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bus, ArrowLeft, Lock, Mail } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import BusSelector from '../components/BusSelector';
+import { Bus, User, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DriverLogin: React.FC = () => {
@@ -11,246 +9,126 @@ const DriverLogin: React.FC = () => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !password) {
-      toast.error('Please enter both email and password');
-      return;
-    }
-    
     setIsLoading(true);
+    setError('');
     
     try {
+      // Regular driver login
       await login(email, password);
-      setIsAuthenticated(true);
-      toast.success('Login successful! Please select your bus number.');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        toast.error('No account found with this email address');
-      } else if (err.code === 'auth/wrong-password') {
-        toast.error('Incorrect password');
-      } else if (err.code === 'auth/invalid-email') {
-        toast.error('Invalid email format');
-      } else if (err.code === 'auth/too-many-requests') {
-        toast.error('Too many failed attempts. Please try again later.');
-      } else {
-        toast.error('Login failed. Please check your credentials.');
-      }
+      navigate('/driver-dashboard/1'); // Default to bus 1, driver will select their bus
+    } catch (err) {
+      setError('Invalid email or password. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleBusSelection = () => {
-    if (!selectedBusId) {
-      toast.error('Please select a bus number');
-      return;
-    }
-    
-    toast.success(`Welcome! Redirecting to Bus #${selectedBusId} dashboard...`);
-    navigate(`/driver-dashboard/${selectedBusId}`);
-  };
-  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
       <motion.div 
-        className="w-full max-w-md bg-white/90 dark:bg-slate-800/90 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/20"
+        className="w-full max-w-md card"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 px-6 py-4">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-xl">
           <div className="flex items-center">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="text-white mr-4 p-1 rounded-full hover:bg-white/20 transition-colors"
+              className="text-white mr-4"
               onClick={() => navigate('/')}
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={24} />
             </motion.button>
-            <div>
-              <h1 className="text-xl font-bold text-white">Driver Login</h1>
-              <p className="text-blue-100 text-sm">Access your dashboard</p>
-            </div>
+            <h1 className="text-2xl font-bold text-white">Driver Login</h1>
           </div>
         </div>
         
-        <div className="p-6">
-          {!isAuthenticated ? (
-            /* Login Form */
-            <form onSubmit={handleLogin} className="space-y-5">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-              >
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail size={18} className="text-slate-400" />
-                  </div>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input pl-10 w-full"
-                    placeholder="mani@ku.com"
-                    required
-                  />
-                </div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-              >
-                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock size={18} className="text-slate-400" />
-                  </div>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input pl-10 w-full"
-                    placeholder="Enter your password"
-                    required
-                  />
-                </div>
-              </motion.div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                type="submit"
-                disabled={isLoading}
-                className={`btn btn-primary w-full mt-6 ${
-                  isLoading ? 'opacity-70 cursor-not-allowed' : ''
-                }`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Signing in...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center">
-                    <Bus size={20} className="mr-2" />
-                    Sign in
-                  </span>
-                )}
-              </motion.button>
-            </form>
-          ) : (
-            /* Bus Selection */
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-6"
+        <div className="p-8">
+          {error && (
+            <motion.div 
+              className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
             >
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bus size={32} className="text-green-600 dark:text-green-400" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
-                  Welcome Back! 👋
-                </h2>
-                <p className="text-slate-600 dark:text-slate-400">
-                  Please select your bus number to continue
-                </p>
-              </div>
-
-              <BusSelector 
-                onSelect={setSelectedBusId} 
-                gridSize={6}
-                animate={true}
-              />
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleBusSelection}
-                disabled={!selectedBusId}
-                className={`btn w-full mt-6 ${
-                  selectedBusId 
-                    ? 'btn-success' 
-                    : 'bg-slate-300 dark:bg-slate-600 text-slate-500 dark:text-slate-400 cursor-not-allowed'
-                }`}
-              >
-                {selectedBusId ? (
-                  <span className="flex items-center justify-center">
-                    <Bus size={20} className="mr-2" />
-                    Access Bus #{selectedBusId} Dashboard
-                  </span>
-                ) : (
-                  <span>Select a bus number first</span>
-                )}
-              </motion.button>
-
-              <button
-                onClick={() => {
-                  setIsAuthenticated(false);
-                  setEmail('');
-                  setPassword('');
-                  setSelectedBusId(null);
-                }}
-                className="w-full text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-              >
-                ← Back to login
-              </button>
+              {error}
             </motion.div>
           )}
 
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User size={20} className="text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input pl-10"
+                  placeholder="driver@example.com"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock size={20} className="text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input pl-10"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isLoading}
+              className={`btn btn-primary w-full mt-8 ${
+                isLoading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center">
+                  <Bus size={20} className="mr-2" />
+                  Sign in
+                </span>
+              )}
+            </motion.button>
+          </form>
         </div>
       </motion.div>
-
-      {/* Floating Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <motion.div
-          className="absolute top-20 left-10 w-20 h-20 bg-blue-400/10 rounded-full"
-          animate={{
-            y: [0, -20, 0],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute bottom-20 right-10 w-16 h-16 bg-purple-400/10 rounded-full"
-          animate={{
-            y: [0, 20, 0],
-            rotate: [360, 180, 0],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </div>
     </div>
   );
 };

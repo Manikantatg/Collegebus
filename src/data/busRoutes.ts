@@ -109,7 +109,7 @@ export const busRoutes: BusRouteWithTimes = {
     { name: "🎦 Select Talkies", scheduledTime: "7:40 AM", completed: false },
     { name: "🏫 Mohammadia School", scheduledTime: "7:42 AM", completed: false },
     { name: "🔄 SP Circle", scheduledTime: "7:45 AM", completed: false },
-    { name: "🎓 Mount View Campus", scheduledTime: "7:47 AM", completed: false }
+    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
   ],
   10: [
     { name: "BPSC (Halting)", scheduledTime: "7:30 AM", completed: false },
@@ -228,6 +228,11 @@ export const drivers = [
 export const ADMIN_CREDENTIALS = {
   email: "admin@bustrack.com",
   password: "admin123"
+};
+
+export const SECURITY_CREDENTIALS = {
+  email: "security@ku.com",
+  password: "1234567890"
 };
 
 export const COLLEGE_LOCATION = {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, PhoneCall, RefreshCw, Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, PhoneCall, RefreshCw, Clock, Wifi, WifiOff, AlertTriangle, MapPin, Bus } from 'lucide-react';
 import BusSelector from '../components/BusSelector';
 import RouteDisplay from '../components/RouteDisplay';
 import { useBus } from '../context/BusContext';
@@ -42,39 +42,42 @@ const StudentDashboard: React.FC = () => {
   }, [selectedBus]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm shadow-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="mr-3 text-slate-600 dark:text-slate-300"
-              onClick={() => navigate('/')}
-            >
-              <ArrowLeft size={20} />
-            </motion.button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white">Student Dashboard</h1>
+      <header className="bg-white dark:bg-gray-800 shadow-sm">
+        <div className="responsive-container py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="mr-4 text-gray-600 dark:text-gray-300"
+                onClick={() => navigate('/')}
+              >
+                <ArrowLeft size={24} />
+              </motion.button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Dashboard</h1>
+              </div>
             </div>
+            
+            {selectedBus && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-full shadow-sm"
+              >
+                <Bus size={18} className="mr-2" />
+                <span className="font-medium">Bus #{selectedBus}</span>
+              </motion.div>
+            )}
           </div>
-          
-          {selectedBus && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center justify-center bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-1 rounded-full shadow-sm"
-            >
-              <span className="text-sm font-medium">Bus #{selectedBus}</span>
-            </motion.div>
-          )}
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-6 max-w-xl">
+      <main className="responsive-container py-8">
         {/* Connection Status */}
-        <div className={`mb-4 flex items-center p-3 rounded-lg ${
+        <div className={`mb-6 flex items-center p-4 rounded-lg ${
           firebaseError 
             ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
             : firebaseConnected 
@@ -83,18 +86,18 @@ const StudentDashboard: React.FC = () => {
         }`}>
           {firebaseError ? (
             <>
-              <AlertTriangle size={18} className="mr-2" />
-              <span>Firebase Error: {firebaseError}</span>
+              <AlertTriangle size={20} className="mr-3" />
+              <span className="font-medium">Firebase Error: {firebaseError}</span>
             </>
           ) : firebaseConnected ? (
             <>
-              <Wifi size={18} className="mr-2" />
-              <span>Connected to real-time data system</span>
+              <Wifi size={20} className="mr-3" />
+              <span className="font-medium">Connected to real-time data system</span>
             </>
           ) : (
             <>
-              <WifiOff size={18} className="mr-2" />
-              <span>Data connection failed</span>
+              <WifiOff size={20} className="mr-3" />
+              <span className="font-medium">Data connection failed</span>
             </>
           )}
         </div>
@@ -103,7 +106,7 @@ const StudentDashboard: React.FC = () => {
         <AnimatePresence>
           {showNotification && (
             <motion.div
-              className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg"
+              className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg"
               initial={{ opacity: 0, y: -50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -50 }}
@@ -120,105 +123,150 @@ const StudentDashboard: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card"
+            className="card max-w-2xl mx-auto"
           >
-            <h2 className="text-xl font-bold text-center mb-6">Select Your Bus</h2>
+            <h2 className="text-2xl font-bold text-center mb-6">Select Your Bus</h2>
             <BusSelector />
           </motion.div>
         ) : (
-          <>
-            {/* Bus route information */}
-            {busData && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="card mb-4"
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold">Bus Route</h2>
-                  
-                  <div className="flex gap-2">
-                    {busData.eta !== null && (
-                      <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-                        ETA: {busData.eta} min
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {/* Bus route information */}
+              {busData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card"
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold">Bus Route</h2>
+                    
+                    <div className="flex gap-3">
+                      {busData.eta !== null && (
+                        <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full text-sm font-medium animate-pulse">
+                          ETA: {busData.eta} min
+                        </div>
+                      )}
+                      <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 px-3 py-2 rounded-full text-xs">
+                        Live
                       </div>
-                    )}
-                    <div className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-1 rounded-full text-xs">
-                      Live
                     </div>
                   </div>
-                </div>
-                
-                <RouteDisplay
-                  route={busData.route}
-                  currentStopIndex={busData.currentStopIndex}
-                  eta={busData.eta}
-                />
-                
-                {/* Current Status */}
-                <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-700 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Current Status:</p>
-                      <p className="font-medium">
-                        {busData.currentStopIndex < busData.route.length 
-                          ? `En route to ${busData.route[busData.currentStopIndex]?.name || 'Unknown'}`
-                          : 'Route completed'
-                        }
-                      </p>
+                  
+                  <RouteDisplay
+                    route={busData.route}
+                    currentStopIndex={busData.currentStopIndex}
+                    eta={busData.eta}
+                  />
+                  
+                  {/* Current Status */}
+                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Current Status:</p>
+                        <p className="font-medium">
+                          {busData.currentStopIndex < busData.route.length 
+                            ? `En route to ${busData.route[busData.currentStopIndex]?.name || 'Unknown'}`
+                            : 'Route completed'
+                          }
+                        </p>
+                      </div>
+                      <Clock size={20} className="text-gray-400" />
                     </div>
-                    <Clock size={16} className="text-slate-400" />
                   </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
+            </div>
 
-            {/* Driver information */}
-            {driverData && (
+            <div className="space-y-6">
+              {/* Driver information */}
+              {driverData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="card bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
+                >
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Driver Information</h3>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold">{driverData.name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{driverData.phone}</p>
+                    </div>
+                    <button
+                      className="btn btn-primary py-2 text-sm"
+                      onClick={() => window.location.href = `tel:${driverData.phone}`}
+                    >
+                      <PhoneCall size={16} />
+                      <span>Contact Driver</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+              
+              {/* Quick Actions */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="card bg-gradient-to-r from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700"
+                transition={{ delay: 0.2 }}
+                className="card"
               >
-                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Driver Information</h3>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold">{driverData.name}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{driverData.phone}</p>
-                  </div>
+                <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                <div className="space-y-3">
                   <button
-                    className="btn btn-outline py-2 text-sm"
-                    onClick={() => window.location.href = `tel:${driverData.phone}`}
+                    className="w-full btn btn-outline"
+                    onClick={() => {
+                      if (selectedBus) {
+                        requestStop(selectedBus);
+                      }
+                    }}
                   >
-                    <PhoneCall size={16} />
-                    <span>Contact Driver</span>
+                    <MapPin size={18} className="mr-2" />
+                    Request Stop
+                  </button>
+                  <button
+                    className="w-full btn btn-secondary"
+                    onClick={() => setSelectedBus(null)}
+                  >
+                    <RefreshCw size={18} className="mr-2" />
+                    Change Bus
                   </button>
                 </div>
               </motion.div>
-            )}
-            
-            {/* Change bus button */}
-            <div className="mt-8 text-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="btn btn-outline inline-flex items-center"
-                onClick={() => setSelectedBus(null)}
-              >
-                <RefreshCw size={18} className="mr-2" />
-                Change Bus
-              </motion.button>
+              
+              {/* Bus Statistics */}
+              {busData && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="card"
+                >
+                  <h3 className="text-lg font-semibold mb-4">Bus Statistics</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Students</p>
+                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{busData.studentCount || 0}</p>
+                    </div>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Stops</p>
+                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{busData.route.length}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
-          </>
+          </div>
         )}
       </main>
       
       {/* Footer */}
-      <footer className="py-4 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 mt-auto">
-        <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-        <p className="mt-1">CSE C Sec Batch 24-25</p>
-        <p className="mt-1">v1.0.0</p>
+      <footer className="py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
+        <div className="responsive-container">
+          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+          <p className="mt-1">CSE C Sec Batch 24-25</p>
+          <p className="mt-1">v1.0.0</p>
+        </div>
       </footer>
     </div>
   );

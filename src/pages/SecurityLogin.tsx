@@ -3,26 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, User, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { ADMIN_CREDENTIALS } from '../data/busRoutes';
+import { SECURITY_CREDENTIALS } from '../data/busRoutes';
 
-const AdminLogin: React.FC = () => {
+const SecurityLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, authError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
     
     try {
+      // Try to login with Firebase
       await login(email, password);
-      navigate('/admin');
+      // If successful, navigate to security dashboard
+      navigate('/security');
     } catch (err) {
-      setError('Invalid email or password. Please check your credentials.');
+      // If Firebase login fails, check if it's the hardcoded credentials
+      if (email.toLowerCase() === SECURITY_CREDENTIALS.email.toLowerCase() && password === SECURITY_CREDENTIALS.password) {
+        // Set a flag in sessionStorage to indicate security login
+        sessionStorage.setItem('securityLogin', 'true');
+        // For the security user, we'll simulate login by directly navigating
+        navigate('/security');
+        return;
+      }
+      // Otherwise, let the error show
     } finally {
       setIsLoading(false);
     }
@@ -46,22 +54,22 @@ const AdminLogin: React.FC = () => {
             >
               <ArrowLeft size={24} />
             </motion.button>
-            <h1 className="text-2xl font-bold text-white">Admin Login</h1>
+            <h1 className="text-2xl font-bold text-white">Security Login</h1>
           </div>
         </div>
         
         <div className="p-8">
-          {error && (
+          {authError && (
             <motion.div 
               className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
             >
-              {error}
+              {authError}
             </motion.div>
           )}
 
-          <form onSubmit={handleAdminLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email
@@ -76,7 +84,7 @@ const AdminLogin: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input pl-10"
-                  placeholder="admin@example.com"
+                  placeholder="security@example.com"
                   required
                 />
               </div>
@@ -129,9 +137,9 @@ const AdminLogin: React.FC = () => {
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
-            <p className="font-medium mb-2">Demo Admin Credentials:</p>
-            <p className="mb-1">Email: <span className="font-mono">{ADMIN_CREDENTIALS.email}</span></p>
-            <p>Password: <span className="font-mono">{ADMIN_CREDENTIALS.password}</span></p>
+            <p className="font-medium mb-2">Security Personnel Credentials:</p>
+            <p className="mb-1">Email: <span className="font-mono">{SECURITY_CREDENTIALS.email}</span></p>
+            <p>Password: <span className="font-mono">{SECURITY_CREDENTIALS.password}</span></p>
           </div>
         </div>
       </motion.div>
@@ -139,4 +147,4 @@ const AdminLogin: React.FC = () => {
   );
 };
 
-export default AdminLogin;
+export default SecurityLogin;
