@@ -42,22 +42,22 @@ const StudentDashboard: React.FC = () => {
   }, [selectedBus]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="responsive-container py-4">
+      <header className="bg-white dark:bg-slate-800 shadow-sm sticky top-0 z-10">
+        <div className="py-4 px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="mr-4 text-gray-600 dark:text-gray-300"
+                className="mr-4 text-slate-600 dark:text-slate-300"
                 onClick={() => navigate('/')}
               >
                 <ArrowLeft size={24} />
               </motion.button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Student Dashboard</h1>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Student Dashboard</h1>
               </div>
             </div>
             
@@ -65,7 +65,7 @@ const StudentDashboard: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-full shadow-sm"
+                className="flex items-center justify-center bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-2 rounded-full shadow-lg"
               >
                 <Bus size={18} className="mr-2" />
                 <span className="font-medium">Bus #{selectedBus}</span>
@@ -75,8 +75,8 @@ const StudentDashboard: React.FC = () => {
         </div>
       </header>
       
-      <main className="responsive-container py-8">
-        {/* Connection Status */}
+      {/* Connection Status */}
+      <div className="px-6 pt-6">
         <div className={`mb-6 flex items-center p-4 rounded-lg ${
           firebaseError 
             ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
@@ -101,29 +101,31 @@ const StudentDashboard: React.FC = () => {
             </>
           )}
         </div>
+      </div>
 
-        {/* Notification */}
-        <AnimatePresence>
-          {showNotification && (
-            <motion.div
-              className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg"
-              initial={{ opacity: 0, y: -50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ duration: 0.3 }}
-            >
-              <p className="text-center font-medium">
-                🔔 {showNotification}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
+      {/* Notification */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div
+            className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-gradient-to-r from-violet-500 to-purple-600 text-white px-6 py-3 rounded-lg shadow-lg"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-center font-medium">
+              🔔 {showNotification}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <main className="px-6 pb-8">
         {!selectedBus ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="card max-w-2xl mx-auto"
+            className="max-w-2xl mx-auto card"
           >
             <h2 className="text-2xl font-bold text-center mb-6">Select Your Bus</h2>
             <BusSelector />
@@ -160,10 +162,10 @@ const StudentDashboard: React.FC = () => {
                   />
                   
                   {/* Current Status */}
-                  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-700 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Current Status:</p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Current Status:</p>
                         <p className="font-medium">
                           {busData.currentStopIndex < busData.route.length 
                             ? `En route to ${busData.route[busData.currentStopIndex]?.name || 'Unknown'}`
@@ -171,7 +173,7 @@ const StudentDashboard: React.FC = () => {
                           }
                         </p>
                       </div>
-                      <Clock size={20} className="text-gray-400" />
+                      <Clock size={20} className="text-slate-400" />
                     </div>
                   </div>
                 </motion.div>
@@ -185,20 +187,20 @@ const StudentDashboard: React.FC = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="card bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
+                  className="card bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700"
                 >
-                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Driver Information</h3>
+                  <h3 className="text-lg font-semibold mb-4">Driver Information</h3>
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-semibold">{driverData.name}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{driverData.phone}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{driverData.phone}</p>
                     </div>
                     <button
-                      className="btn btn-primary py-2 text-sm"
+                      className="btn btn-primary py-2 px-4"
                       onClick={() => window.location.href = `tel:${driverData.phone}`}
                     >
-                      <PhoneCall size={16} />
-                      <span>Contact Driver</span>
+                      <PhoneCall size={18} className="mr-2" />
+                      <span>Contact</span>
                     </button>
                   </div>
                 </motion.div>
@@ -214,7 +216,7 @@ const StudentDashboard: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <button
-                    className="w-full btn btn-outline"
+                    className="w-full btn btn-outline py-3"
                     onClick={() => {
                       if (selectedBus) {
                         requestStop(selectedBus);
@@ -225,7 +227,7 @@ const StudentDashboard: React.FC = () => {
                     Request Stop
                   </button>
                   <button
-                    className="w-full btn btn-secondary"
+                    className="w-full btn btn-secondary py-3"
                     onClick={() => setSelectedBus(null)}
                   >
                     <RefreshCw size={18} className="mr-2" />
@@ -244,13 +246,13 @@ const StudentDashboard: React.FC = () => {
                 >
                   <h3 className="text-lg font-semibold mb-4">Bus Statistics</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Students</p>
-                      <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{busData.studentCount || 0}</p>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Students</p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{busData.studentCount || 0}</p>
                     </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Stops</p>
-                      <p className="text-xl font-bold text-green-600 dark:text-green-400">{busData.route.length}</p>
+                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Stops</p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{busData.route.length}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -261,10 +263,10 @@ const StudentDashboard: React.FC = () => {
       </main>
       
       {/* Footer */}
-      <footer className="py-6 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
-        <div className="responsive-container">
-          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-          <p className="mt-1">CSE C Sec Batch 24-25</p>
+      <footer className="py-6 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
+        <div className="px-6">
+          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+          <p className="text-red-500 mt-1">CSE C Sec Batch 24-25</p>
           <p className="mt-1">v1.0.0</p>
         </div>
       </footer>

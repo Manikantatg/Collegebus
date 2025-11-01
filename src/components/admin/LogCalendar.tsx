@@ -15,19 +15,28 @@ const LogCalendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [busLogs, setBusLogs] = useState<BusLogEntry[]>([]);
   
-  // Load logs from localStorage (in a real app, this would come from Firebase)
+  // Load logs from localStorage with real-time updates
   useEffect(() => {
     const loadLogs = () => {
       const savedLogs = localStorage.getItem('busLogs');
       if (savedLogs) {
-        setBusLogs(JSON.parse(savedLogs));
+        try {
+          const parsedLogs = JSON.parse(savedLogs);
+          // Sort logs by timestamp (newest first)
+          const sortedLogs = parsedLogs.sort((a: BusLogEntry, b: BusLogEntry) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          setBusLogs(sortedLogs);
+        } catch (e) {
+          console.error('Error parsing logs:', e);
+        }
       }
     };
 
     loadLogs();
     
-    // Set up polling to check for new logs every 5 seconds
-    const interval = setInterval(loadLogs, 5000);
+    // Set up polling to check for new logs every 3 seconds for real-time updates
+    const interval = setInterval(loadLogs, 3000);
     
     return () => clearInterval(interval);
   }, []);

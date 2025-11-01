@@ -1,183 +1,179 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Bus, User, Shield, Lock, MapPin, Clock, Users, TrendingUp } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Bus, 
+  User,
+  Shield,
+  Lock
+} from 'lucide-react';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [showSplash, setShowSplash] = useState(true);
+  const [busClickCount, setBusClickCount] = useState(0);
+  const [showAdminSecurity, setShowAdminSecurity] = useState(false);
   
-  // Features data for Bento grid
-  const features = [
-    {
-      icon: <Bus className="h-8 w-8 text-blue-600" />,
-      title: "Real-time Tracking",
-      description: "Live bus locations with accurate ETAs"
-    },
-    {
-      icon: <MapPin className="h-8 w-8 text-blue-600" />,
-      title: "Route Visualization",
-      description: "Interactive maps showing all bus routes"
-    },
-    {
-      icon: <Clock className="h-8 w-8 text-blue-600" />,
-      title: "Schedule Management",
-      description: "Up-to-date timetables and notifications"
-    },
-    {
-      icon: <Users className="h-8 w-8 text-blue-600" />,
-      title: "Student Safety",
-      description: "Secure tracking and emergency alerts"
-    },
-    {
-      icon: <TrendingUp className="h-8 w-8 text-blue-600" />,
-      title: "Analytics Dashboard",
-      description: "Performance metrics and insights"
-    },
-    {
-      icon: <Shield className="h-8 w-8 text-blue-600" />,
-      title: "Security Monitoring",
-      description: "Campus entry/exit tracking system"
+  // Show splash screen for 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Handle bus emoji clicks
+  const handleBusClick = () => {
+    const newCount = busClickCount + 1;
+    setBusClickCount(newCount);
+    
+    if (newCount === 3) {
+      setShowAdminSecurity(true);
+      setBusClickCount(0);
     }
-  ];
+  };
   
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Hero Section */}
-      <div className="responsive-container section-padding">
-        <div className="text-center max-w-3xl mx-auto">
-          <motion.h1 
-            className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 swiss-heading"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            Campus Bus Tracker
-          </motion.h1>
-          <motion.p 
-            className="text-xl text-gray-600 dark:text-gray-300 mb-10 section-subtitle"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            Streamlined transportation management for students, drivers, and administrators
-          </motion.p>
+  if (showSplash) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <div className="bg-white p-6 rounded-2xl shadow-2xl mb-8">
+            <Bus size={80} className="text-violet-500 mx-auto" />
+          </div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Campus Bus Tracker</h1>
+          <p className="text-slate-600 dark:text-slate-400">Live bus locations & ETAs for college students 🚍</p>
           
-          {/* Role Selection Bento Grid */}
-          <motion.div 
-            className="bento-grid mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+          <motion.div
+            className="mt-8 w-12 h-12 border-4 border-violet-300 border-t-white rounded-full mx-auto"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+        </motion.div>
+      </div>
+    );
+  }
+  
+  // Admin/Security login screen
+  if (showAdminSecurity) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-blue-600">
+            Admin & Security
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-300 mt-3 max-w-md">
+            Access restricted areas
+          </p>
+        </motion.div>
+
+        <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full max-w-md">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn btn-primary text-lg py-5 flex-1"
+            onClick={() => navigate('/admin-login')}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div 
-              className="bento-item cursor-pointer bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-              onClick={() => navigate('/student-dashboard')}
-            >
-              <div className="p-6">
-                <User className="h-12 w-12 mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Student Portal</h3>
-                <p className="opacity-90">Track buses and plan your journey</p>
-              </div>
-            </div>
-            
-            <div 
-              className="bento-item cursor-pointer bg-gradient-to-br from-green-500 to-green-600 text-white"
-              onClick={() => navigate('/driver-login')}
-            >
-              <div className="p-6">
-                <Bus className="h-12 w-12 mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Driver Dashboard</h3>
-                <p className="opacity-90">Manage routes and update progress</p>
-              </div>
-            </div>
-            
-            <div 
-              className="bento-item cursor-pointer bg-gradient-to-br from-purple-500 to-purple-600 text-white"
-              onClick={() => navigate('/admin-login')}
-            >
-              <div className="p-6">
-                <Lock className="h-12 w-12 mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Administrator</h3>
-                <p className="opacity-90">Monitor system and manage data</p>
-              </div>
-            </div>
-            
-            <div 
-              className="bento-item cursor-pointer bg-gradient-to-br from-indigo-500 to-indigo-600 text-white"
-              onClick={() => navigate('/security-login')}
-            >
-              <div className="p-6">
-                <Shield className="h-12 w-12 mb-4" />
-                <h3 className="text-2xl font-bold mb-2">Security</h3>
-                <p className="opacity-90">Track campus entry and exit logs</p>
-              </div>
-            </div>
-          </motion.div>
+            <Lock size={24} />
+            <span className="font-medium">Admin Login</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="btn btn-secondary text-lg py-5 flex-1"
+            onClick={() => navigate('/security-login')}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <Shield size={24} />
+            <span className="font-medium">Security Login</span>
+          </motion.button>
         </div>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="mt-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+          onClick={() => setShowAdminSecurity(false)}
+        >
+          Back to main screen
+        </motion.button>
       </div>
-      
-      {/* Features Section */}
-      <div className="bg-white dark:bg-gray-800 py-16">
-        <div className="responsive-container">
-          <div className="text-center mb-16">
-            <h2 className="section-title">Powerful Features</h2>
-            <p className="section-subtitle max-w-2xl mx-auto">
-              Our comprehensive bus tracking system provides everything you need for efficient campus transportation
-            </p>
-          </div>
-          
-          <div className="bento-grid">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                className="bento-item"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="p-6">
-                  <div className="mb-4">
-                    {feature.icon}
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-8"
+      >
+        <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-blue-600">
+          Campus Bus Tracker
+        </h1>
+        <p 
+          className="text-lg text-slate-600 dark:text-slate-300 mt-3 max-w-md cursor-pointer"
+          onClick={handleBusClick}
+        >
+          Live bus locations & ETAs for college students 🚍
+        </p>
+      </motion.div>
+
+      <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full max-w-md">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="btn btn-primary text-lg py-5 flex-1"
+          onClick={() => navigate('/student-dashboard')}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <User size={24} />
+          <span className="font-medium">Student</span>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="btn btn-secondary text-lg py-5 flex-1"
+          onClick={() => navigate('/driver-login')}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <Bus size={24} />
+          <span className="font-medium">Driver</span>
+        </motion.button>
       </div>
-      
-      {/* Stats Section */}
-      <div className="responsive-container section-padding">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">20+</div>
-            <div className="text-gray-600 dark:text-gray-400">Active Buses</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">1500+</div>
-            <div className="text-gray-600 dark:text-gray-400">Daily Students</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">99.9%</div>
-            <div className="text-gray-600 dark:text-gray-400">Uptime</div>
-          </div>
-          <div className="card text-center">
-            <div className="text-3xl font-bold text-indigo-600 mb-2">24/7</div>
-            <div className="text-gray-600 dark:text-gray-400">Support</div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Footer */}
-      <footer className="py-8 text-center text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
-        <div className="responsive-container">
-          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-          <p className="mt-2">CSE C Sec Batch 24-25</p>
-          <p className="mt-1">v1.0.0</p>
-        </div>
-      </footer>
+
+      <motion.div
+        className="mt-16 text-center text-sm text-slate-500 dark:text-slate-400"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
+      >
+        <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+        <p className="mt-1 text-red-500">CSE C Sec Batch 24-25</p>
+        <p className="mt-1">v1.0.0</p>
+      </motion.div>
     </div>
   );
 };
