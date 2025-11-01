@@ -50,8 +50,8 @@ const AdminDashboard: React.FC = () => {
 
     loadLogs();
     
-    // Set up polling to check for new logs every 3 seconds for real-time updates
-    const interval = setInterval(loadLogs, 3000);
+    // Set up polling to check for new logs every 10 seconds for real-time updates
+    const interval = setInterval(loadLogs, 10000);
     
     return () => clearInterval(interval);
   }, []);

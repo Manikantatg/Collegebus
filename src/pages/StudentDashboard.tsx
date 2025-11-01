@@ -32,14 +32,11 @@ const StudentDashboard: React.FC = () => {
     }
   }, [buses, selectedBus]);
   
-  // Memoize selected bus data to prevent unnecessary re-renders
-  const busData = useMemo(() => {
-    return selectedBus ? buses[selectedBus] : null;
-  }, [buses, selectedBus]);
+  // Get selected bus data - removed useMemo to ensure real-time updates
+  const busData = selectedBus ? buses[selectedBus] : null;
   
-  const driverData = useMemo(() => {
-    return selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
-  }, [selectedBus]);
+  // Get driver data - removed useMemo to ensure real-time updates
+  const driverData = selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
 
   // Render content based on state
   const renderContent = () => {
@@ -91,33 +88,7 @@ const StudentDashboard: React.FC = () => {
           </div>
         </header>
         
-        {/* Connection Status */}
-        <div className="px-6 pt-6">
-          <div className={`mb-6 flex items-center p-4 rounded-lg ${
-            firebaseError 
-              ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
-              : firebaseConnected 
-                ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
-                : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
-          }`}>
-            {firebaseError ? (
-              <>
-                <AlertTriangle size={20} className="mr-3" />
-                <span className="font-medium">Firebase Error: {firebaseError}</span>
-              </>
-            ) : firebaseConnected ? (
-              <>
-                <Wifi size={20} className="mr-3" />
-                <span className="font-medium">Connected to real-time data system</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={20} className="mr-3" />
-                <span className="font-medium">Data connection failed</span>
-              </>
-            )}
-          </div>
-        </div>
+
 
         {/* Notification */}
         <AnimatePresence>

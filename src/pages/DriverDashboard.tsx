@@ -116,33 +116,7 @@ const DriverDashboard: React.FC = () => {
           </div>
         </header>
         
-        {/* Connection Status */}
-        <div className="px-6 pt-6">
-          <div className={`mb-6 flex items-center p-4 rounded-lg ${
-            firebaseError 
-              ? 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200' 
-              : firebaseConnected 
-                ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' 
-                : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'
-          }`}>
-            {firebaseError ? (
-              <>
-                <AlertTriangle size={20} className="mr-3" />
-                <span className="font-medium">Firebase Error: {firebaseError}</span>
-              </>
-            ) : firebaseConnected ? (
-              <>
-                <Wifi size={20} className="mr-3" />
-                <span className="font-medium">Connected to real-time data system</span>
-              </>
-            ) : (
-              <>
-                <WifiOff size={20} className="mr-3" />
-                <span className="font-medium">Data connection failed</span>
-              </>
-            )}
-          </div>
-        </div>
+
 
         <main className="px-6 pb-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -152,14 +126,7 @@ const DriverDashboard: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="card"
               >
-                {/* Student Count Button - Read Only */}
-                {busData && (
-                  <div className="flex justify-end mb-6">
-                    <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-                      <span className="text-2xl font-bold">{busData.studentCount || 0}</span>
-                    </div>
-                  </div>
-                )}
+
                 
                 <RouteDisplay
                   route={busData.route}
@@ -196,10 +163,11 @@ const DriverDashboard: React.FC = () => {
                 transition={{ delay: 0.2 }}
                 className="card"
               >
-                <h3 className="text-lg font-semibold mb-4">ETA Requests</h3>
                 <EtaRequests 
                   requests={busData.etaRequests}
                   notifications={busData.notifications || []}
+                  studentCount={busData.studentCount || 0}
+                  busId={busIdKey || 0}
                 />
               </motion.div>
             </div>

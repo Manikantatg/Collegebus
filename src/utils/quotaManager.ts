@@ -4,7 +4,7 @@ class QuotaManager {
   private lastUpdate: number = 0;
   private updateQueue: Array<() => Promise<any>> = [];
   private isProcessing: boolean = false;
-  private readonly MIN_UPDATE_INTERVAL: number = 1000; // Reduced to 1 second for better real-time updates
+  private readonly MIN_UPDATE_INTERVAL: number = 100; // Set to 100ms for balanced real-time updates
 
   private constructor() {}
 

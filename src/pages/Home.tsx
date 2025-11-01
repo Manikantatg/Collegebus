@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Bus, 
   User,
@@ -10,18 +10,8 @@ import {
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [showSplash, setShowSplash] = useState(true);
   const [busClickCount, setBusClickCount] = useState(0);
   const [showAdminSecurity, setShowAdminSecurity] = useState(false);
-  
-  // Show splash screen for 2 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2000);
-    
-    return () => clearTimeout(timer);
-  }, []);
   
   // Handle bus emoji clicks
   const handleBusClick = () => {
@@ -33,31 +23,6 @@ const Home: React.FC = () => {
       setBusClickCount(0);
     }
   };
-  
-  if (showSplash) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center"
-        >
-          <div className="bg-white p-6 rounded-2xl shadow-2xl mb-8">
-            <Bus size={80} className="text-violet-500 mx-auto" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Campus Bus Tracker</h1>
-          <p className="text-slate-600 dark:text-slate-400">Live bus locations & ETAs for college students 🚍</p>
-          
-          <motion.div
-            className="mt-8 w-12 h-12 border-4 border-violet-300 border-t-white rounded-full mx-auto"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-        </motion.div>
-      </div>
-    );
-  }
   
   // Admin/Security login screen
   if (showAdminSecurity) {

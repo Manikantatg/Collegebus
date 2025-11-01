@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BusStop } from '../types';
 import { Bus } from 'lucide-react';
@@ -10,7 +10,7 @@ interface RouteDisplayProps {
   // Remove atStop prop
 }
 
-const RouteDisplay: React.FC<RouteDisplayProps> = memo(({ 
+const RouteDisplay: React.FC<RouteDisplayProps> = ({ 
   route, 
   currentStopIndex,
   eta
@@ -127,23 +127,6 @@ const RouteDisplay: React.FC<RouteDisplayProps> = memo(({
       </div>
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function to prevent unnecessary re-renders
-  return (
-    prevProps.currentStopIndex === nextProps.currentStopIndex &&
-    prevProps.eta === nextProps.eta &&
-    // Remove atStop comparison
-    prevProps.route.length === nextProps.route.length &&
-    prevProps.route.every((stop, index) => {
-      const nextStop = nextProps.route[index];
-      return (
-        stop.name === nextStop.name &&
-        stop.scheduledTime === nextStop.scheduledTime &&
-        stop.completed === nextStop.completed &&
-        stop.actualTime === nextStop.actualTime
-      );
-    })
-  );
-});
+};
 
 export default RouteDisplay;

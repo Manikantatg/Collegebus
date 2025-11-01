@@ -71,7 +71,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateQueueRef = useRef<Array<{busId: number | string, updates: Partial<BusState>}>>([]);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(0);
-  const UPDATE_THROTTLE = 1000; // Reduced to 1 second for better real-time updates
+  const UPDATE_THROTTLE = 100; // Set to 100ms for balanced real-time updates
   
   // Helper function to get bus ID for Firebase (convert string to number)
   const getFirebaseBusId = (busId: number | string): number => {
