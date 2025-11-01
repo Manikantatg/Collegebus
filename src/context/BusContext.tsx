@@ -76,33 +76,39 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Initialize buses with hardcoded routes - RUN ONLY ONCE
   useEffect(() => {
     const initializeBuses = () => {
-      const busesMap: Record<number, BusData> = {};
-      
-      // Create buses from hardcoded data
-      Object.keys(busRoutes).forEach(busIdStr => {
-        const busId = parseInt(busIdStr);
-        const route = busRoutes[busId];
-        const driver = drivers.find(d => d.bus === busId);
+      try {
+        const busesMap: Record<number, BusData> = {};
         
-        // Generate a random student count between 0 and 50
-        const randomStudentCount = Math.floor(Math.random() * 51);
+        // Create buses from hardcoded data
+        Object.keys(busRoutes).forEach(busIdStr => {
+          const busId = parseInt(busIdStr);
+          const route = busRoutes[busId];
+          const driver = drivers.find(d => d.bus === busId);
+          
+          // Generate a random student count between 0 and 50
+          const randomStudentCount = Math.floor(Math.random() * 51);
+          
+          busesMap[busId] = {
+            id: busId,
+            currentStopIndex: 0,
+            eta: null,
+            route: route.map(stop => ({ ...stop, completed: false })),
+            etaRequests: [],
+            notifications: [],
+            totalDistance: 0,
+            routeCompleted: false,
+            studentCount: randomStudentCount, // Initialize with random student count
+            atStop: false // Initialize atStop property
+          };
+        });
         
-        busesMap[busId] = {
-          id: busId,
-          currentStopIndex: 0,
-          eta: null,
-          route: route.map(stop => ({ ...stop, completed: false })),
-          etaRequests: [],
-          notifications: [],
-          totalDistance: 0,
-          routeCompleted: false,
-          studentCount: randomStudentCount, // Initialize with random student count
-          atStop: false // Initialize atStop property
-        };
-      });
-      
-      setBuses(busesMap);
-      setLoading(false);
+        setBuses(busesMap);
+        setLoading(false);
+      } catch (error) {
+        console.error('Error initializing buses:', error);
+        setFirebaseError('Failed to initialize bus data');
+        setLoading(false);
+      }
     };
 
     initializeBuses();
@@ -125,7 +131,8 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Firebase listener for bus states - OPTIMIZED FOR REAL-TIME UPDATES
   useEffect(() => {
-    if (!db || Object.keys(buses).length === 0) return;
+    // Don't set up listener if still loading or no buses
+    if (loading || !db || Object.keys(buses).length === 0) return;
 
     // Clear any existing subscription
     if (unsubscribeRef.current) {
@@ -267,11 +274,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearInterval(connectionCheckIntervalRef.current);
       }
     };
-  }, [buses, firebaseConnected]);
+  }, [buses, firebaseConnected, loading]);
 
   // Initialize bus states in Firebase (with better error handling) - RUN ONLY ONCE
   useEffect(() => {
-    if (!db || Object.keys(buses).length === 0 || isInitializedRef.current) return;
+    if (!db || Object.keys(buses).length === 0 || isInitializedRef.current || loading) return;
 
     const initializeBusStates = async () => {
       try {
@@ -315,7 +322,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [buses, db]);
+  }, [buses, db, loading]);
 
   const getFormattedTime = (): string => {
     return formatTime(new Date());
