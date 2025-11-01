@@ -17,7 +17,12 @@ const DriverDashboard: React.FC = () => {
   
   useEffect(() => {
     if (busId) {
-      setSelectedBus(parseInt(busId));
+      // Check if busId is the BITM variant
+      if (busId === "15 (BITM Variant)") {
+        setSelectedBus(17); // Use 17 as the numeric ID for BITM variant
+      } else {
+        setSelectedBus(parseInt(busId));
+      }
     }
   }, [busId, setSelectedBus]);
 
@@ -25,8 +30,15 @@ const DriverDashboard: React.FC = () => {
     navigate('/driver-login');
   };
   
-  const busIdNum = busId ? parseInt(busId) : null;
-  const busData = busIdNum && buses ? buses[busIdNum] : null;
+  // Determine the bus ID to use for accessing bus data
+  let busIdKey: number | string | null = null;
+  if (busId === "15 (BITM Variant)") {
+    busIdKey = 17; // Use 17 as the numeric ID for BITM variant
+  } else if (busId) {
+    busIdKey = parseInt(busId);
+  }
+  
+  const busData = busIdKey !== null && buses ? buses[busIdKey as number] : null;
   
   // Watch for Firebase errors to show quota exceeded messages
   useEffect(() => {
@@ -49,12 +61,12 @@ const DriverDashboard: React.FC = () => {
       );
     }
     
-    if (!busIdNum || !busData) {
+    if (!busIdKey || !busData) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
           <div className="text-center p-8 card">
             <h2 className="text-2xl font-bold text-red-600 mb-4">
-              {!busIdNum ? 'Invalid Bus ID' : 'Bus Data Not Found'}
+              {!busIdKey ? 'Invalid Bus ID' : 'Bus Data Not Found'}
             </h2>
             <button 
               className="btn btn-primary" 
@@ -85,7 +97,9 @@ const DriverDashboard: React.FC = () => {
                 </motion.button>
                 <div>
                   <h1 className="text-xl font-bold">Driver Dashboard</h1>
-                  <p className="text-blue-100">Bus #{busIdNum}</p>
+                  <p className="text-blue-100">
+                    Bus #{busId === "15 (BITM Variant)" ? "15 (BITM Variant)" : busIdKey}
+                  </p>
                 </div>
               </div>
               
@@ -162,12 +176,12 @@ const DriverDashboard: React.FC = () => {
                 transition={{ delay: 0.1 }}
               >
                 <DriverActions
-                  onDone={() => moveToNextStop(busIdNum)}
-                  onWrong={() => moveToPreviousStop(busIdNum)}
-                  onEta={(minutes) => setEta(busIdNum, minutes)}
+                  onDone={() => moveToNextStop(busId || busIdKey || 0)}
+                  onWrong={() => moveToPreviousStop(busId || busIdKey || 0)}
+                  onEta={(minutes) => setEta(busId || busIdKey || 0, minutes)}
                   onReset={() => {
                     if (confirm('Are you sure you want to reset all progress for this route?')) {
-                      resetBusProgress(busIdNum);
+                      resetBusProgress(busId || busIdKey || 0);
                     }
                   }}
                   stopName={currentStopName}

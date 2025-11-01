@@ -82,7 +82,9 @@ const StudentDashboard: React.FC = () => {
                   className="flex items-center justify-center bg-gradient-to-r from-violet-500 to-purple-600 text-white px-4 py-2 rounded-full shadow-lg"
                 >
                   <Bus size={18} className="mr-2" />
-                  <span className="font-medium">Bus #{selectedBus}</span>
+                  <span className="font-medium">
+                    Bus #{selectedBus === 17 ? "15 (BITM Variant)" : selectedBus}
+                  </span>
                 </motion.div>
               )}
             </div>

@@ -18,7 +18,7 @@ import quotaManager from '../utils/quotaManager';
 
 // Simplified bus state structure for Firebase
 interface BusState {
-  id: number;
+  id: number | string;
   currentStopIndex: number;
   eta: number | null;
   routeCompleted: boolean;
@@ -30,14 +30,14 @@ interface BusContextType {
   buses: Record<number, BusData>;
   selectedBus: number | null;
   setSelectedBus: (busId: number | null) => void;
-  moveToNextStop: (busId: number) => void;
-  moveToPreviousStop: (busId: number) => void;
-  setEta: (busId: number, minutes: number) => void;
-  resetBusProgress: (busId: number) => void;
+  moveToNextStop: (busId: number | string) => void;
+  moveToPreviousStop: (busId: number | string) => void;
+  setEta: (busId: number | string, minutes: number) => void;
+  resetBusProgress: (busId: number | string) => void;
   getFormattedTime: () => string;
-  requestStop: (busId: number) => void;
+  requestStop: (busId: number | string) => void;
   reverseRoute: () => void;
-  updateStudentCount: (busId: number, count: number) => void; // Add this line
+  updateStudentCount: (busId: number | string, count: number) => void; // Add this line
   loading: boolean;
   firebaseConnected: boolean;
   firebaseError: string | null;
@@ -64,14 +64,26 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const connectionRetryCount = useRef(0);
   const isInitializedRef = useRef(false);
   const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedBusesRef = useRef<Set<number>>(new Set());
+  const initializedBusesRef = useRef<Set<number | string>>(new Set());
   const activeListenersRef = useRef<Set<number>>(new Set());
   
   // Rate limiting for Firebase updates
-  const updateQueueRef = useRef<Array<{busId: number, updates: Partial<BusState>}>>([]);
+  const updateQueueRef = useRef<Array<{busId: number | string, updates: Partial<BusState>}>>([]);
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 1000; // Reduced to 1 second for better real-time updates
+  
+  // Helper function to get bus ID for Firebase (convert string to number)
+  const getFirebaseBusId = (busId: number | string): number => {
+    if (typeof busId === 'string') {
+      // For "15 (BITM Variant)", use 17 as the Firebase ID
+      if (busId === "15 (BITM Variant)") {
+        return 17;
+      }
+      return parseInt(busId);
+    }
+    return busId;
+  };
   
   // Initialize buses with hardcoded routes - RUN ONLY ONCE
   useEffect(() => {
@@ -81,9 +93,24 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         // Create buses from hardcoded data
         Object.keys(busRoutes).forEach(busIdStr => {
-          const busId = parseInt(busIdStr);
-          const route = busRoutes[busId];
-          const driver = drivers.find(d => d.bus === busId);
+          let busId: number;
+          let routeKey: number | string = busIdStr;
+          
+          // Handle string keys like "15 (BITM Variant)"
+          if (isNaN(parseInt(busIdStr))) {
+            if (busIdStr === "15 (BITM Variant)") {
+              busId = 17; // Use 17 as the numeric ID for BITM variant
+              routeKey = "15 (BITM Variant)";
+            } else {
+              return; // Skip unknown string keys
+            }
+          } else {
+            busId = parseInt(busIdStr);
+            routeKey = busId;
+          }
+          
+          const route = busRoutes[routeKey];
+          const driver = drivers.find(d => d.bus === routeKey);
           
           // Generate a random student count between 0 and 50
           const randomStudentCount = Math.floor(Math.random() * 51);
@@ -163,7 +190,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               // Process all documents in the snapshot
               snapshot.forEach((doc) => {
                 const busStateData = doc.data() as BusState;
-                const busId = parseInt(doc.id);
+                const busId = typeof busStateData.id === 'string' 
+                  ? getFirebaseBusId(busStateData.id) 
+                  : busStateData.id as number;
                 
                 // Get the initial route from our local buses state
                 const localBus = buses[busId];
@@ -329,19 +358,23 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Update bus state in Firebase - OPTIMIZED FOR REAL-TIME UPDATES WITH IMPROVED RATE LIMITING
-  const updateBusStateInFirebase = async (busId: number, updates: Partial<BusState>) => {
+  const updateBusStateInFirebase = async (busId: number | string, updates: Partial<BusState>) => {
     if (!db) {
       console.warn('Firebase not initialized');
       return;
     }
 
     try {
+      // Convert busId to Firebase-compatible ID
+      const firebaseBusId = getFirebaseBusId(busId);
+      
       // For critical real-time updates, try to process immediately if possible
       if (quotaManager.canProcessImmediately()) {
-        const busRef = doc(db as Firestore, 'busStates', busId.toString());
+        const busRef = doc(db as Firestore, 'busStates', firebaseBusId.toString());
         
         // Only include fields that are actually being updated
         const firebaseUpdates: any = {
+          id: busId, // Store the original busId (could be string or number)
           lastUpdated: new Date().toISOString()
         };
         
@@ -359,7 +392,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         
         // Only update if there are actual changes
-        if (Object.keys(firebaseUpdates).length > 1) { // More than just lastUpdated
+        if (Object.keys(firebaseUpdates).length > 2) { // More than just id and lastUpdated
           await setDoc(busRef, firebaseUpdates, { merge: true });
         }
         
@@ -367,10 +400,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         // Use the quota manager to queue and rate-limit the update
         await quotaManager.queueUpdate(async () => {
-          const busRef = doc(db as Firestore, 'busStates', busId.toString());
+          const busRef = doc(db as Firestore, 'busStates', firebaseBusId.toString());
           
           // Only include fields that are actually being updated
           const firebaseUpdates: any = {
+            id: busId, // Store the original busId (could be string or number)
             lastUpdated: new Date().toISOString()
           };
           
@@ -388,7 +422,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           
           // Only update if there are actual changes
-          if (Object.keys(firebaseUpdates).length > 1) { // More than just lastUpdated
+          if (Object.keys(firebaseUpdates).length > 2) { // More than just id and lastUpdated
             await setDoc(busRef, firebaseUpdates, { merge: true });
           }
           
@@ -410,9 +444,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const moveToNextStop = async (busId: number) => {
+  const moveToNextStop = async (busId: number | string) => {
     try {
-      const bus = buses[busId];
+      // Convert busId to numeric for accessing buses object
+      const numericBusId = getFirebaseBusId(busId);
+      const bus = buses[numericBusId];
       if (!bus || bus.currentStopIndex >= bus.route.length - 1) return;
 
       const currentStop = bus.route[bus.currentStopIndex];
@@ -421,17 +457,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
+        if (updatedBuses[numericBusId]) {
           // Mark current stop as completed
-          const updatedRoute = [...updatedBuses[busId].route];
+          const updatedRoute = [...updatedBuses[numericBusId].route];
           updatedRoute[bus.currentStopIndex] = {
             ...updatedRoute[bus.currentStopIndex],
             completed: true,
             actualTime: formattedTime
           };
 
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
+          updatedBuses[numericBusId] = {
+            ...updatedBuses[numericBusId],
             currentStopIndex: bus.currentStopIndex + 1,
             eta: null,
             route: updatedRoute,
@@ -443,6 +479,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
       await updateBusStateInFirebase(busId, {
+        id: busId,
         currentStopIndex: bus.currentStopIndex + 1,
         eta: null,
         routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
@@ -456,9 +493,11 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const moveToPreviousStop = async (busId: number) => {
+  const moveToPreviousStop = async (busId: number | string) => {
     try {
-      const bus = buses[busId];
+      // Convert busId to numeric for accessing buses object
+      const numericBusId = getFirebaseBusId(busId);
+      const bus = buses[numericBusId];
       if (!bus || bus.currentStopIndex <= 0) return;
 
       const previousStopIndex = bus.currentStopIndex - 1;
@@ -468,17 +507,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
+        if (updatedBuses[numericBusId]) {
           // Mark previous stop as not completed
-          const updatedRoute = [...updatedBuses[busId].route];
+          const updatedRoute = [...updatedBuses[numericBusId].route];
           updatedRoute[previousStopIndex] = {
             ...updatedRoute[previousStopIndex],
             completed: false,
             actualTime: undefined
           };
 
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
+          updatedBuses[numericBusId] = {
+            ...updatedBuses[numericBusId],
             currentStopIndex: previousStopIndex,
             eta: null,
             route: updatedRoute,
@@ -490,6 +529,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
       await updateBusStateInFirebase(busId, {
+        id: busId,
         currentStopIndex: previousStopIndex,
         eta: null,
         routeCompleted: false
@@ -503,17 +543,19 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const setEta = async (busId: number, minutes: number) => {
+  const setEta = async (busId: number | string, minutes: number) => {
     try {
-      const bus = buses[busId];
+      // Convert busId to numeric for accessing buses object
+      const numericBusId = getFirebaseBusId(busId);
+      const bus = buses[numericBusId];
       if (!bus) return;
 
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
+        if (updatedBuses[numericBusId]) {
+          updatedBuses[numericBusId] = {
+            ...updatedBuses[numericBusId],
             eta: minutes
           };
         }
@@ -522,6 +564,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
       await updateBusStateInFirebase(busId, {
+        id: busId,
         eta: minutes
       });
 
@@ -534,14 +577,17 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Add function to update student count
-  const updateStudentCount = async (busId: number, count: number) => {
+  const updateStudentCount = async (busId: number | string, count: number) => {
     try {
+      // Convert busId to numeric for accessing buses object
+      const numericBusId = getFirebaseBusId(busId);
+      
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
+        if (updatedBuses[numericBusId]) {
+          updatedBuses[numericBusId] = {
+            ...updatedBuses[numericBusId],
             studentCount: Math.max(0, count) // Ensure count is not negative
           };
         }
@@ -550,6 +596,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state for real-time sync
       await updateBusStateInFirebase(busId, {
+        id: busId,
         studentCount: Math.max(0, count)
       });
 
@@ -560,7 +607,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const requestStop = async (busId: number) => {
+  const requestStop = async (busId: number | string) => {
     try {
       toast.success('Stop request sent to driver');
     } catch (error: any) {
@@ -570,20 +617,23 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resetBusProgress = async (busId: number) => {
+  const resetBusProgress = async (busId: number | string) => {
     try {
+      // Convert busId to numeric for accessing buses object
+      const numericBusId = getFirebaseBusId(busId);
+      
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
-        if (updatedBuses[busId]) {
-          const resetRoute = updatedBuses[busId].route.map(stop => ({
+        if (updatedBuses[numericBusId]) {
+          const resetRoute = updatedBuses[numericBusId].route.map(stop => ({
             ...stop,
             completed: false,
             actualTime: undefined
           }));
 
-          updatedBuses[busId] = {
-            ...updatedBuses[busId],
+          updatedBuses[numericBusId] = {
+            ...updatedBuses[numericBusId],
             currentStopIndex: 0,
             eta: null,
             route: resetRoute,
@@ -597,6 +647,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // Update Firebase state - IMMEDIATE UPDATE FOR REAL-TIME SYNC
       await updateBusStateInFirebase(busId, {
+        id: busId,
         currentStopIndex: 0,
         eta: null,
         routeCompleted: false

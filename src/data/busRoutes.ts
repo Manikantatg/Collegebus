@@ -1,8 +1,9 @@
 import { BusStop } from '../types';
 
-// Define the BusRouteWithTimes type locally
+// Define the BusRouteWithTimes type locally to accept both number and string keys
 interface BusRouteWithTimes {
   [key: number]: BusStop[];
+  [key: string]: BusStop[];
 }
 
 export const busRoutes: BusRouteWithTimes = {
@@ -182,7 +183,8 @@ export const busRoutes: BusRouteWithTimes = {
     { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
   ],
   // Bus No. 15 (BITM Variant) --- Mallikarjuna (Route via Shardha Medical Store)
-  17: [
+  // Changed from Bus #17 to represent as "15 (BITM Variant)" as per specification
+  "15 (BITM Variant)": [
     { name: "BPSC (Halting - BITM Route)", scheduledTime: "7:30 AM", completed: false },
     { name: "💊 Shardha Medical Store", scheduledTime: "7:30 AM", completed: false },
     { name: "🎦 Raghavendra Theatre", scheduledTime: "7:32 AM", completed: false },
@@ -220,7 +222,7 @@ export const drivers = [
   { email: "shankarappa.r@ku.com", name: "Shankarappa R", phone: "9743798551", bus: 13, password: "driver123" },
   { email: "rajesh@ku.com", name: "Rajesh", phone: "9980807675", bus: 14, password: "driver123" },
   { email: "pampapathi@ku.com", name: "Pampapathi", phone: "7338023244", bus: 15, password: "driver123" },
-  { email: "mallikarjuna@ku.com", name: "Mallikarjuna", phone: "9740654774", bus: 17, password: "driver123" }, // BITM variant of bus 15
+  { email: "mallikarjuna@ku.com", name: "Mallikarjuna", phone: "9740654774", bus: "15 (BITM Variant)", password: "driver123" }, // BITM variant of bus 15
   { email: "govinda@ku.com", name: "Govinda", phone: "9900338432", bus: 16, password: "driver123" },
   { email: "lingamurthy@ku.com", name: "Linga Murthy", phone: "9110416165", bus: 20, password: "driver123" }
 ];
