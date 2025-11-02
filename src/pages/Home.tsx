@@ -135,7 +135,7 @@ const Home: React.FC = () => {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.8 }}
       >
-        <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
+        <p>📚 Made possible by <a href="https://https://chat.whatsapp.com/F3dWIW12gXJ6yaVYscyDjJ" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
         <p className="mt-1 text-red-500">CSE C Sec Batch 24-25</p>
         <p className="mt-1">.</p>
       </motion.div>
