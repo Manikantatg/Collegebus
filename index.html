@@ -4,14 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="https://www.kishkindauniversity.edu.in/images/logo-kis.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="https://www.kishkindauniversity.edu.in/images/logo-kis.png">
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#6366f1" />
     <meta name="apple-mobile-web-app-title" content="Campus Bus Tracker">
     <meta name="application-name" content="Campus Bus Tracker">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Campus Bus Tracker</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
