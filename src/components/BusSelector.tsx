@@ -27,11 +27,11 @@ const BusSelector: React.FC<BusSelectorProps> = ({
   };
   
   // Updated to include all buses (1-16, 15 (BITM Variant), 20) - removed bus 17
-  const busNumbers: (number | string)[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, "15 (BITM Variant)", 16, 20];
+  const busNumbers: (number | string)[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, "15 BITM", 16, 20];
   
   return (
     <div className="w-full max-w-md mx-auto">
-      <h2 className="text-xl font-semibold mb-4 text-center">Select Bus Number</h2>
+      <h2 className="text-xl font-semibold mb-4 text-center"></h2>
       <div 
         className="grid grid-cols-4 gap-2 md:gap-3"
       >

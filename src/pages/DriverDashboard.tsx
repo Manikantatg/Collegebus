@@ -179,7 +179,7 @@ const DriverDashboard: React.FC = () => {
           <div className="px-6">
             <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
             <p className="text-red-500 mt-1">CSE C Sec Batch 24-25</p>
-            <p className="mt-1">v1.0.0</p>
+            <p className="mt-1">.</p>
           </div>
         </footer>
       </div>

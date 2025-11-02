@@ -120,6 +120,13 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
                     </motion.div>
                   </AnimatePresence>
                 )}
+                
+                {/* Show live status for current stop */}
+                {isCurrent && (
+                  <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mt-1">
+                    🚌 Live: En route
+                  </div>
+                )}
               </div>
             </motion.div>
           );

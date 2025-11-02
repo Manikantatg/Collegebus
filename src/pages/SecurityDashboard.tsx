@@ -149,8 +149,8 @@ const SecurityDashboard: React.FC = () => {
         </div>
       </header>
       
-      {/* Connection Status */}
-      <div className="px-6 pt-6">
+      {/* Connection Status - Removed as per requirements */}
+      {/* <div className="px-6 pt-6">
         <div className={`mb-6 flex items-center p-4 rounded-lg ${
           firebaseError 
             ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800' 
@@ -175,7 +175,7 @@ const SecurityDashboard: React.FC = () => {
             </>
           )}
         </div>
-      </div>
+      </div> */}
       
       <main className="px-6 pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -198,174 +198,123 @@ const SecurityDashboard: React.FC = () => {
                     className={`py-4 px-4 rounded-lg transition-colors flex flex-col items-center justify-center ${
                       logType === 'entry'
                         ? 'bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
-                        : 'bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700'
+                        : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                   >
-                    <LogInIcon size={20} className="text-slate-600 dark:text-slate-400 mb-2" />
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Entry</span>
+                    <LogInIcon size={20} className="text-green-600 dark:text-green-400 mb-2" />
+                    <span className="text-sm font-medium">Bus Entry</span>
                   </button>
                   <button
                     onClick={() => setLogType('exit')}
                     className={`py-4 px-4 rounded-lg transition-colors flex flex-col items-center justify-center ${
                       logType === 'exit'
                         ? 'bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
-                        : 'bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700'
+                        : 'bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                     }`}
                   >
-                    <LogOutIcon size={20} className="text-slate-600 dark:text-slate-400 mb-2" />
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Exit</span>
+                    <LogOutIcon size={20} className="text-red-600 dark:text-red-400 mb-2" />
+                    <span className="text-sm font-medium">Bus Exit</span>
                   </button>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                {busNumbers.map(busId => (
-                  <motion.button
-                    key={busId}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleBusLog(busId)}
-                    className="py-5 bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg shadow-sm hover:shadow transition-all border border-slate-200 dark:border-slate-600"
-                  >
-                    <div className="font-medium text-sm">Bus {busId}</div>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-            
-            {/* Filter Controls */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-100 dark:border-slate-700 mt-6"
-            >
-              <h3 className="text-lg font-semibold mb-5">Filter Logs</h3>
-              
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Log Type
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                  Select Bus
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2">
+                  {busNumbers.map(busId => (
                     <button
-                      onClick={() => setFilterType('all')}
-                      className={`py-3 px-3 text-sm font-medium rounded-lg ${
-                        filterType === 'all'
-                          ? 'bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
-                          : 'bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700'
-                      }`}
+                      key={busId}
+                      onClick={() => handleBusLog(busId)}
+                      className="aspect-square flex items-center justify-center text-sm font-medium rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                     >
-                      All
+                      {busId}
                     </button>
-                    <button
-                      onClick={() => setFilterType('entry')}
-                      className={`py-3 px-3 text-sm font-medium rounded-lg ${
-                        filterType === 'entry'
-                          ? 'bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
-                          : 'bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      Entry
-                    </button>
-                    <button
-                      onClick={() => setFilterType('exit')}
-                      className={`py-3 px-3 text-sm font-medium rounded-lg ${
-                        filterType === 'exit'
-                          ? 'bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
-                          : 'bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700'
-                      }`}
-                    >
-                      Exit
-                    </button>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    <div className="flex items-center">
-                      <Calendar size={14} className="mr-2" />
-                      <span>Select Date</span>
-                    </div>
-                  </label>
-                  <select
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-2.5 text-sm"
-                  >
-                    <option value="">All Dates</option>
-                    {getUniqueDates().map(date => (
-                      <option key={date} value={date}>
-                        {new Date(date).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric' 
-                        })}
-                      </option>
-                    ))}
-                  </select>
+                  ))}
                 </div>
               </div>
             </motion.div>
           </div>
-          
+
           {/* Logs Panel */}
           <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
               className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-100 dark:border-slate-700"
             >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Recent Bus Logs</h2>
-                <div className="text-sm text-slate-500 dark:text-slate-400">
-                  {filteredLogs.length} logs
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+                <h2 className="text-xl font-semibold">Recent Logs</h2>
+                
+                <div className="flex flex-wrap gap-3 mt-3 sm:mt-0">
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value as 'all' | 'entry' | 'exit')}
+                    className="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-3 py-2"
+                  >
+                    <option value="all">All Logs</option>
+                    <option value="entry">Entry Only</option>
+                    <option value="exit">Exit Only</option>
+                  </select>
+                  
+                  <select
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white px-3 py-2"
+                  >
+                    <option value="">All Dates</option>
+                    {getUniqueDates().map(date => (
+                      <option key={date} value={date}>
+                        {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+
+              <div className="space-y-3 max-h-96 overflow-y-auto">
                 {filteredLogs.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                    <Clock size={40} className="mx-auto mb-4 opacity-50" />
-                    <p className="text-base">No bus logs recorded yet</p>
-                    <p className="text-sm mt-2">Select a bus and record its movement</p>
+                  <div className="text-center py-12">
+                    <Clock size={48} className="mx-auto text-slate-300 dark:text-slate-600 mb-4" />
+                    <p className="text-slate-500 dark:text-slate-400">No logs recorded yet</p>
                   </div>
                 ) : (
-                  filteredLogs.map(log => (
-                    <motion.div
-                      key={log.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-700/30"
+                  filteredLogs.map((log) => (
+                    <div 
+                      key={log.id} 
+                      className={`p-4 rounded-lg border ${
+                        log.type === 'entry' 
+                          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                          : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                      }`}
                     >
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center">
-                          <div className={`flex-shrink-0 h-10 w-10 rounded-lg flex items-center justify-center ${
-                            log.type === 'entry'
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                              : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                          }`}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center">
                             {log.type === 'entry' ? (
-                              <LogInIcon size={18} />
+                              <LogInIcon size={16} className="text-green-600 dark:text-green-400 mr-2" />
                             ) : (
-                              <LogOutIcon size={18} />
+                              <LogOutIcon size={16} className="text-red-600 dark:text-red-400 mr-2" />
                             )}
+                            <span className={`font-medium ${
+                              log.type === 'entry' 
+                                ? 'text-green-700 dark:text-green-300' 
+                                : 'text-red-700 dark:text-red-300'
+                            }`}>
+                              Bus #{log.busId} {log.type === 'entry' ? 'Entered' : 'Exited'}
+                            </span>
                           </div>
-                          <div className="ml-4">
-                            <div className="font-medium text-slate-900 dark:text-white">Bus {log.busId}</div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
-                              {log.type === 'entry' ? 'Entered Campus' : 'Exited Campus'}
-                            </div>
-                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                            Recorded by {log.recordedBy}
+                          </p>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium text-sm text-slate-900 dark:text-white">{formatLogTime(log.timestamp)}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            by {log.recordedBy}
-                          </div>
-                        </div>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {formatLogTime(log.timestamp)}
+                        </span>
                       </div>
-                    </motion.div>
+                    </div>
                   ))
                 )}
               </div>
@@ -375,11 +324,11 @@ const SecurityDashboard: React.FC = () => {
       </main>
       
       {/* Footer */}
-      <footer className="py-6 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
+      <footer className="py-6 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
         <div className="px-6">
-          <p>Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets Opportunity</p>
+          <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
           <p className="text-red-500 mt-1">CSE C Sec Batch 24-25</p>
-          <p className="mt-1">v1.0.0</p>
+          <p className="mt-1">.</p>
         </div>
       </footer>
     </div>

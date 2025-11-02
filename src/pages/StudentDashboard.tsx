@@ -159,6 +159,12 @@ const StudentDashboard: React.FC = () => {
                               : 'Route completed'
                             }
                           </p>
+                          {/* Display next stop information */}
+                          {busData.currentStopIndex < busData.route.length - 1 && (
+                            <p className="text-sm text-slate-500 dark:text-slate-300 mt-1">
+                              Next stop: {busData.route[busData.currentStopIndex + 1]?.name || 'Unknown'}
+                            </p>
+                          )}
                         </div>
                         <Clock size={20} className="text-slate-400" />
                       </div>
@@ -168,6 +174,32 @@ const StudentDashboard: React.FC = () => {
               </div>
 
               <div className="space-y-6">
+                {/* Connection Status - Removed as per requirements */}
+                {/* <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      {firebaseConnected ? (
+                        <Wifi className="text-green-500 mr-2" size={20} />
+                      ) : (
+                        <WifiOff className="text-red-500 mr-2" size={20} />
+                      )}
+                      <span className="font-medium">
+                        {firebaseConnected ? 'Connected' : 'Disconnected'}
+                      </span>
+                    </div>
+                    {!firebaseConnected && (
+                      <AlertTriangle className="text-yellow-500" size={20} />
+                    )}
+                  </div>
+                  {firebaseError && (
+                    <p className="text-sm text-red-500 mt-2">{firebaseError}</p>
+                  )}
+                </motion.div> */}
+
                 {/* Driver information */}
                 {driverData && (
                   <motion.div
@@ -243,7 +275,7 @@ const StudentDashboard: React.FC = () => {
           <div className="px-6">
             <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
             <p className="text-red-500 mt-1">CSE C Sec Batch 24-25</p>
-            <p className="mt-1">v1.0.0</p>
+            <p className="mt-1">.</p>
           </div>
         </footer>
       </div>
