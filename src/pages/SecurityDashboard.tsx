@@ -327,7 +327,7 @@ const SecurityDashboard: React.FC = () => {
       <footer className="py-6 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
         <div className="px-6">
           <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-          <p className="text-red-500 mt-1">CSE C Sec Batch 24-25</p>
+          <p className="text-red-500 mt-1">CSE C Sec Batch 23-24</p>
           <p className="mt-1">.</p>
         </div>
       </footer>
