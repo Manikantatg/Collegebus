@@ -18,7 +18,7 @@ async function createIcons() {
     const imageBuffer = await downloadImage(imageUrl);
     
     // Create circular versions of the image
-    const sizes = [192, 512];
+    const sizes = [180, 192, 512];
     
     for (const size of sizes) {
       await createCircularIcon(imageBuffer, size);
@@ -72,7 +72,7 @@ async function createCircularIcon(imageBuffer, size) {
     ctx.drawImage(img, x, y, width, height);
     
     // Save to file
-    const fileName = `icon-${size}x${size}.png`;
+    const fileName = size === 180 ? 'apple-touch-icon.png' : `icon-${size}x${size}.png`;
     const filePath = path.join(__dirname, '..', 'public', 'icons', fileName);
     
     const buffer = canvas.toBuffer('image/png');
