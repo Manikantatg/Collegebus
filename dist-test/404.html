@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/images/logo-kis.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#6366f1" />
+    <meta name="apple-mobile-web-app-title" content="Campus Bus Tracker">
+    <meta name="application-name" content="Campus Bus Tracker">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Campus Bus Tracker</title>
     <script>
       // Redirect to the main app with the correct path
@@ -13,13 +18,14 @@
         if (path !== '/' && path.indexOf('.') === -1) {
           // If it's not the root and doesn't contain a dot (file extension), 
           // it's likely a client-side route
-          window.location.href = '/#' + path;
+          window.location.href = '/' + path;
         }
       })();
     </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <!-- Point to the built JavaScript file instead of the source TypeScript file -->
+    <script type="module" src="/assets/index-Dt_ln87m.js"></script>
   </body>
 </html>

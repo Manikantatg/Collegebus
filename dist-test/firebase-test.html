@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Test</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <div id="status">Testing Firebase connection...</div>
+    <div id="results"></div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyCGvaYH_zL-vefP4Bm83MdDn9DXAlCDiGk",
+          authDomain: "bus-tracking-7706d.firebaseapp.com",
+          projectId: "bus-tracking-7706d",
+          storageBucket: "bus-tracking-7706d.firebasestorage.app",
+          messagingSenderId: "217343122092",
+          appId: "1:217343122092:web:15338fb293406602689d09"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Test Firebase connection
+        async function testFirebase() {
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                statusDiv.innerHTML = 'Testing Firebase connection...';
+                
+                // Test writing to busStates collection
+                const docRef = await db.collection('busStates').doc('test-bus').set({
+                    id: 999,
+                    currentStopIndex: 0,
+                    eta: null,
+                    routeCompleted: false,
+                    lastUpdated: new Date().toISOString(),
+                    test: true
+                });
+                
+                statusDiv.innerHTML = 'Successfully wrote test document to busStates collection';
+                
+                // Test reading from busStates collection
+                const snapshot = await db.collection('busStates').get();
+                const data = [];
+                snapshot.forEach(doc => {
+                    data.push({ id: doc.id, ...doc.data() });
+                });
+                
+                resultsDiv.innerHTML = `
+                    <h2>Test Results:</h2>
+                    <p>Read ${data.length} documents from busStates collection</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+                
+                statusDiv.innerHTML = 'Firebase test completed successfully!';
+            } catch (error) {
+                console.error('Firebase test error:', error);
+                statusDiv.innerHTML = `Error: ${error.message || error}`;
+            }
+        }
+
+        // Run the test
+        testFirebase();
+    </script>
+</body>
+</html>

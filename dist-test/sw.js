@@ -12,15 +12,6 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // For navigation requests, always serve index.html to support client-side routing
-  if (event.request.mode === 'navigate') {
-    event.respondWith(caches.match('/index.html') 
-      .then(response => response || fetch('/index.html'))
-    );
-    return;
-  }
-
-  // For other requests, try to serve from cache first
   event.respondWith(
     caches.match(event.request)
       .then(response => {
