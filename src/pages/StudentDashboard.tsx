@@ -35,8 +35,14 @@ const StudentDashboard: React.FC = () => {
   // Get selected bus data - removed useMemo to ensure real-time updates
   const busData = selectedBus ? buses[selectedBus] : null;
   
-  // Get driver data - removed useMemo to ensure real-time updates
-  const driverData = selectedBus ? drivers.find(driver => driver.bus === selectedBus) : null;
+  // Get driver data - handle both numeric and string bus IDs
+  const driverData = selectedBus ? drivers.find(driver => {
+    if (selectedBus === 17) {
+      // For bus ID 17, look for the driver with bus ID 17
+      return driver.bus === 17;
+    }
+    return driver.bus === selectedBus;
+  }) : null;
 
   // Render content based on state
   const renderContent = () => {
@@ -80,7 +86,7 @@ const StudentDashboard: React.FC = () => {
                 >
                   <Bus size={18} className="mr-2" />
                   <span className="font-medium">
-                    Bus #{selectedBus === 17 ? "15 (BITM Variant)" : selectedBus}
+                    Bus #{selectedBus === 17 ? "15 BITM" : selectedBus}
                   </span>
                 </motion.div>
               )}
@@ -274,7 +280,7 @@ const StudentDashboard: React.FC = () => {
         <footer className="py-6 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
           <div className="px-6">
             <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-            <p className="text-red-500 mt-1">CSE C Sec Batch 23-24</p>
+            <p className="text-red-500 mt-1">CSE Batch 23-24 </p>
             <p className="mt-1">.</p>
           </div>
         </footer>

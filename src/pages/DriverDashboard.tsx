@@ -7,6 +7,7 @@ import DriverActions from '../components/DriverActions';
 import EtaRequests from '../components/EtaRequests';
 import { useBus } from '../context/BusContext';
 import { toast } from 'react-hot-toast';
+import { drivers } from '../data/busRoutes';
 
 const DriverDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -17,11 +18,14 @@ const DriverDashboard: React.FC = () => {
   
   useEffect(() => {
     if (busId) {
-      // Check if busId is the BITM variant
-      if (busId === "15 (BITM Variant)") {
+      // Decode the busId in case it's URL encoded
+      const decodedBusId = decodeURIComponent(busId);
+      
+      // Check if busId is the BITM variant (now using numeric ID 17)
+      if (decodedBusId === "17" || decodedBusId === "15 (BITM Variant)") {
         setSelectedBus(17); // Use 17 as the numeric ID for BITM variant
       } else {
-        setSelectedBus(parseInt(busId));
+        setSelectedBus(parseInt(decodedBusId));
       }
     }
   }, [busId, setSelectedBus]);
@@ -32,13 +36,24 @@ const DriverDashboard: React.FC = () => {
   
   // Determine the bus ID to use for accessing bus data
   let busIdKey: number | string | null = null;
-  if (busId === "15 (BITM Variant)") {
+  const decodedBusId = busId ? decodeURIComponent(busId) : null;
+  
+  if (decodedBusId === "17" || decodedBusId === "15 (BITM Variant)") {
     busIdKey = 17; // Use 17 as the numeric ID for BITM variant
   } else if (busId) {
     busIdKey = parseInt(busId);
   }
   
   const busData = busIdKey !== null && buses ? buses[busIdKey as number] : null;
+  
+  // Get driver data - handle numeric ID 17 for BITM variant
+  const driverData = busIdKey ? drivers.find((driver: { bus: number | string }) => {
+    if (busIdKey === 17) {
+      // For bus ID 17, look for the driver with bus ID 17
+      return driver.bus === 17;
+    }
+    return driver.bus === busIdKey;
+  }) : null;
   
   // Watch for Firebase errors to show quota exceeded messages
   useEffect(() => {
@@ -98,7 +113,7 @@ const DriverDashboard: React.FC = () => {
                 <div>
                   <h1 className="text-xl font-bold">Driver Dashboard</h1>
                   <p className="text-blue-100">
-                    Bus #{busId === "15 (BITM Variant)" ? "15 (BITM Variant)" : busIdKey}
+                    Bus #{busIdKey === 17 ? "15 BITM" : busIdKey}
                   </p>
                 </div>
               </div>
@@ -178,7 +193,7 @@ const DriverDashboard: React.FC = () => {
         <footer className="py-6 text-center text-sm text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
           <div className="px-6">
             <p>📚 Made possible by <a href="https://doutly.com" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Doutly</a> — Where Curiosity Meets 💰 Opportunity</p>
-            <p className="text-red-500 mt-1">CSE C Sec Batch 23-24</p>
+            <p className="text-red-500 mt-1">CSE Batch 23-24 </p>
             <p className="mt-1">.</p>
           </div>
         </footer>

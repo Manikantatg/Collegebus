@@ -25,7 +25,22 @@ self.addEventListener('fetch', event => {
     caches.match(event.request)
       .then(response => {
         // Return cached version or fetch from network
-        return response || fetch(event.request);
+        if (response) {
+          return response;
+        }
+        
+        // Clone the request to consume it safely
+        const fetchRequest = event.request.clone();
+        
+        return fetch(fetchRequest).catch(error => {
+          // Log the error but don't throw it to prevent unhandled promise rejection
+          console.warn('Fetch failed for:', event.request.url, error);
+          // Return a basic response or rethrow if it's a critical resource
+          return new Response('Network error occurred', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
+        });
       })
   );
 });

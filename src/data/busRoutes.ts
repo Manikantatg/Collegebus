@@ -105,7 +105,6 @@ export const busRoutes: BusRouteWithTimes = {
   ],
   9: [
     { name: "BITM (Halting)", scheduledTime: "7:30 AM", completed: false },
-    { name: "🕉️ Sai Baba Temple Cross", scheduledTime: "7:30 AM", completed: false },
     { name: "🚦 Belagal Cross", scheduledTime: "7:35 AM", completed: false },
     { name: "🎦 Select Talkies", scheduledTime: "7:40 AM", completed: false },
     { name: "🏫 Mohammadia School", scheduledTime: "7:42 AM", completed: false },
@@ -184,17 +183,18 @@ export const busRoutes: BusRouteWithTimes = {
   ],
   // Bus No. 15 (BITM Variant) --- Mallikarjuna (Route via Shardha Medical Store)
   // Changed from Bus #17 to represent as "15 (BITM Variant)" as per specification
-  "15 (BITM Variant)": [
-    { name: "BPSC (Halting - BITM Route)", scheduledTime: "7:30 AM", completed: false },
-    { name: "💊 Shardha Medical Store", scheduledTime: "7:30 AM", completed: false },
-    { name: "🎦 Raghavendra Theatre", scheduledTime: "7:32 AM", completed: false },
-    { name: "🔄 Mothi Circle", scheduledTime: "7:35 AM", completed: false },
-    { name: "🚂 2nd Railway Gate", scheduledTime: "7:38 AM", completed: false },
-    { name: "✝️ Sudha Cross", scheduledTime: "7:40 AM", completed: false },
-    { name: "🏫 Vasavi School", scheduledTime: "7:42 AM", completed: false },
-    { name: "🕉️ Kumaraswamy Temple", scheduledTime: "7:44 AM", completed: false },
-    { name: "👮‍♀️ Women's Police Station", scheduledTime: "7:47 AM", completed: false },
-    { name: "🎓 Mount View Campus", scheduledTime: "8:50 AM", completed: false }
+  // Now using numeric ID 17 to avoid string-related errors
+  17: [
+    { name: "BPSC (Halting Point)", scheduledTime: "7:30 AM", completed: false },
+    { name: "Shardha Medical Store", scheduledTime: "7:30 AM", completed: false },
+    { name: "Raghavendra Theatre", scheduledTime: "7:32 AM", completed: false },
+    { name: "Mothi Circle", scheduledTime: "7:35 AM", completed: false },
+    { name: "2nd Railway Gate", scheduledTime: "7:38 AM", completed: false },
+    { name: "Sudha Cross", scheduledTime: "7:40 AM", completed: false },
+    { name: "Vasavi School", scheduledTime: "7:42 AM", completed: false },
+    { name: "Kumaraswamy Temple", scheduledTime: "7:44 AM", completed: false },
+    { name: "Women’s Police Station", scheduledTime: "7:47 AM", completed: false },
+    { name: "Mount View Campus (Final Stop)", scheduledTime: "8:50 AM", completed: false }
   ],
   16: [
     { name: "RR Block (Halting)", scheduledTime: "7:35 AM", completed: false },
@@ -222,7 +222,7 @@ export const drivers = [
   { email: "shankarappa.r@ku.com", name: "Shankarappa R", phone: "9743798551", bus: 13, password: "driver123" },
   { email: "rajesh@ku.com", name: "Rajesh", phone: "9980807675", bus: 14, password: "driver123" },
   { email: "pampapathi@ku.com", name: "Pampapathi", phone: "7338023244", bus: 15, password: "driver123" },
-  { email: "mallikarjuna@ku.com", name: "Mallikarjuna", phone: "9740654774", bus: "15 (BITM Variant)", password: "driver123" }, // BITM variant of bus 15
+  { email: "mallikarjuna@ku.com", name: "Mallikarjuna", phone: "9740654774", bus: 17, password: "driver123" }, // BITM variant of bus 15
   { email: "govinda@ku.com", name: "Govinda", phone: "9900338432", bus: 16, password: "driver123" },
   { email: "lingamurthy@ku.com", name: "Linga Murthy", phone: "9110416165", bus: 20, password: "driver123" }
 ];

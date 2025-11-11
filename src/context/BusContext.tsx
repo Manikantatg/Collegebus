@@ -454,6 +454,9 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const currentStop = bus.route[bus.currentStopIndex];
       const formattedTime = getFormattedTime();
 
+      // Calculate ETA for next stop (default to 5 minutes)
+      const defaultEta = 5;
+      
       // Update local state
       setBuses(prev => {
         const updatedBuses = { ...prev };
@@ -469,7 +472,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedBuses[numericBusId] = {
             ...updatedBuses[numericBusId],
             currentStopIndex: bus.currentStopIndex + 1,
-            eta: null,
+            eta: defaultEta, // Set default ETA when moving to next stop
             route: updatedRoute,
             routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
           };
@@ -481,7 +484,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateBusStateInFirebase(busId, {
         id: busId,
         currentStopIndex: bus.currentStopIndex + 1,
-        eta: null,
+        eta: defaultEta, // Set default ETA when moving to next stop
         routeCompleted: bus.currentStopIndex + 1 >= bus.route.length
       });
 
@@ -519,7 +522,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           updatedBuses[numericBusId] = {
             ...updatedBuses[numericBusId],
             currentStopIndex: previousStopIndex,
-            eta: null,
+            eta: null, // Clear ETA when moving back
             route: updatedRoute,
             routeCompleted: false
           };
@@ -531,7 +534,7 @@ export const BusProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await updateBusStateInFirebase(busId, {
         id: busId,
         currentStopIndex: previousStopIndex,
-        eta: null,
+        eta: null, // Clear ETA when moving back
         routeCompleted: false
       });
 

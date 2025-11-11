@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bus, User, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import BusSelector from '../components/BusSelector';
 
 const DriverLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const DriverLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // Track if driver is logged in
+  const [selectedBus, setSelectedBus] = useState<number | string | null>(null); // Track selected bus
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,13 +23,65 @@ const DriverLogin: React.FC = () => {
     try {
       // Regular driver login
       await login(email, password);
-      navigate('/driver-dashboard/1'); // Default to bus 1, driver will select their bus
+      setIsLoggedIn(true); // Set logged in state instead of navigating directly
     } catch (err) {
       setError('Invalid email or password. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleBusSelect = (busId: number | string) => {
+    setSelectedBus(busId);
+    // Navigate to the driver dashboard with the selected bus ID
+    // Use numeric ID 17 for BITM variant to avoid string-related errors
+    const busIdParam = busId === 17 ? 17 : busId;
+    // Use encodeURIComponent to properly encode the bus ID in the URL
+    const encodedBusIdParam = encodeURIComponent(busIdParam.toString());
+    navigate(`/driver-dashboard/${encodedBusIdParam}`);
+  };
+
+  // If driver is logged in but hasn't selected a bus, show bus selector
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
+        <motion.div 
+          className="w-full max-w-md card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-5 rounded-t-xl">
+            <div className="flex items-center">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="text-white mr-4"
+                onClick={() => {
+                  setIsLoggedIn(false);
+                  setSelectedBus(null);
+                }}
+              >
+                <ArrowLeft size={24} />
+              </motion.button>
+              <h1 className="text-2xl font-bold text-white">Select Your Bus</h1>
+            </div>
+          </div>
+          
+          <div className="p-8">
+            <p className="text-center text-gray-600 dark:text-gray-300 mb-6">
+              Please select the bus you're driving today
+            </p>
+            
+            <BusSelector 
+              onSelect={handleBusSelect}
+              animate={false}
+            />
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
